@@ -100,53 +100,112 @@
     </footer>
 
     <!-- Frontend Queue Simulation Logic -->
-    <script>
-        // TARGET COORDINATES (Example: Store Front Door)
-        // Adjust these to the actual storefront coordinates later
-        const STORE_LAT = 38.9072; 
-        const STORE_LON = -77.0369;
-        const ALLOWED_RADIUS_MILES = 0.1; // roughly 500 feet
+        <script>
+        // ========================================================
+        // ORGANIZER CONFIGURATION PANEL
+        // ========================================================
+        // Set this to your exact coordinate anchor (e.g., your house)
+        const CONFIG = {
+            STORE_LAT: 38.9360,          // Example Latitude (Adjust to your exact coordinates)
+            STORE_LON: -76.7500,         // Example Longitude (Adjust to your exact coordinates)
+            ALLOWED_RADIUS_MILES: 1.0,   // Geofence boundary size (e.g., 1.0 mile radius)
+            SIMULATION_SPEED_MS: 4000    // How fast the queue moves in the preview (4 seconds)
+        };
 
-        // Fake DB State for the Prototype
+        // Live App State
         let myTicketNumber = null;
         let currentLiveServing = 1;
 
         function getDigitalTicket() {
             const statusText = document.getElementById('geo-status');
-            statusText.innerText = "Verifying physical location...";
+            statusText.className = "text-center text-xs text-[#5f6368] font-mono animate-pulse";
+            statusText.innerText = "Requesting precise GPS coordinates...";
+
+            // Configuration options to help mobile browsers resolve location faster
+            const geoOptions = {
+                enableHighAccuracy: true, 
+                timeout: 10000,           // 10 seconds timeout
+                maximumAge: 0             // Force fresh location, no cache
+            };
 
             if (!navigator.geolocation) {
-                statusText.innerText = "Geolocation not supported by your browser.";
+                statusText.className = "text-center text-xs text-red-500 font-mono";
+                statusText.innerText = "Geolocation is not supported by this browser.";
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userLat = position.coords.latitude;
-                    const userLon = position.coords.longitude;
-                    
-                    // In production, you would calculate the distance between user and store here
-                    // For prototyping purposes, we will pass them through to simulate success
-                    
-                    // Generate a random ticket number between 40 and 50 to simulate arriving early
-                    myTicketNumber = Math.floor(Math.random() * 10) + 42; 
-                    
-                    // Switch views instantly
-                    document.getElementById('join-card').classList.add('hidden');
-                    document.getElementById('ticket-card').classList.remove('hidden');
-                    
-                    document.getElementById('user-number').innerText = `#${myTicketNumber}`;
-                    
-                    const now = new Date();
-                    document.getElementById('timestamp-display').innerText = `Secured at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-                    
-                    // Start live simulation tracker
-                    startLiveQueueSimulation();
-                },
-                (error) => {
-                    statusText.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> Location access denied. Cannot verify line placement.</span>`;
-                }
-            );
+            navigator.geolocation.getCurrentPosition(successGPS, errorGPS, geoOptions);
+        }
+
+        // Triggered when the browser successfully returns GPS data
+        function successGPS(position) {
+            const statusText = document.getElementById('geo-status');
+            const userLat = position.coords.latitude;
+            const userLon = position.coords.longitude;
+            
+            // Calculate real physical distance
+            const distanceAway = calculateHaversineDistance(userLat, userLon, CONFIG.STORE_LAT, CONFIG.STORE_LON);
+            
+            console.log(`User Lat: ${userLat}, Lon: ${userLon}`);
+            console.log(`Distance to anchor: ${distanceAway.toFixed(3)} miles`);
+
+            // Check if user is inside the organizer's geofence
+            if (distanceAway <= CONFIG.ALLOWED_RADIUS_MILES) {
+                // SUCCESS: User is physically present at the venue
+                generateTicket();
+            } else {
+                // FAILURE: User is trying to spoof or join from home
+                statusText.className = "text-center text-xs text-rose-600 font-mono bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2";
+                statusText.innerHTML = `<i class="fa-solid fa-person-shelter"></i> <strong>Out of Bounds.</strong><br>You are ${distanceAway.toFixed(2)} miles away. You must be within ${CONFIG.ALLOWED_RADIUS_MILES} mile of the venue to secure a ticket.`;
+            }
+        }
+
+        // Triggered if user blocks location or GPS fails
+        function errorGPS(error) {
+            const statusText = document.getElementById('geo-status');
+            statusText.className = "text-center text-xs text-amber-600 font-mono bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2";
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    statusText.innerHTML = `<i class="fa-solid fa-lock"></i> <strong>Location Access Denied.</strong><br>Please enable location permissions in your browser/device settings for this site to verify you are at the line.`;
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    statusText.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> <strong>GPS Signal Weak.</strong><br>Unable to determine your physical location. If you are indoors, try moving closer to a window.`;
+                    break;
+                case error.TIMEOUT:
+                    statusText.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> <strong>Location Timeout.</strong><br>The request timed out. Please try clicking the button again.`;
+                    break;
+            }
+        }
+
+        // The Core Geofencing Math Formula
+        function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 3958.8; // Radius of the Earth in MILES (use 6371 for kilometers)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            
+            const a = 
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c; 
+            return distance; // Returns distance in miles
+        }
+
+        // UI Transition to reveal the digital ticket
+        function generateTicket() {
+            // Simulate assignment of ticket number (e.g., ticket #47)
+            myTicketNumber = Math.floor(Math.random() * 10) + 42; 
+            
+            document.getElementById('join-card').classList.add('hidden');
+            document.getElementById('ticket-card').classList.remove('hidden');
+            document.getElementById('user-number').innerText = `#${myTicketNumber}`;
+            
+            const now = new Date();
+            document.getElementById('timestamp-display').innerText = `Secured at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            
+            startLiveQueueSimulation();
         }
 
         function startLiveQueueSimulation() {
@@ -156,10 +215,8 @@
             const alertBanner = document.getElementById('alert-banner');
             const alertIcon = document.getElementById('alert-icon');
 
-            // Set initial math
             aheadEl.innerText = myTicketNumber - currentLiveServing;
 
-            // Simulate the line moving every few seconds
             const interval = setInterval(() => {
                 if (currentLiveServing < myTicketNumber) {
                     currentLiveServing++;
@@ -168,7 +225,6 @@
                     let remaining = myTicketNumber - currentLiveServing;
                     aheadEl.innerText = remaining;
 
-                    // Dynamics Alert Logic
                     if (remaining === 5) {
                         alertText.innerText = "You are 5 numbers away! Please head to the store entrance now.";
                         alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
@@ -180,7 +236,7 @@
                         clearInterval(interval);
                     }
                 }
-            }, 4000); // Increments every 4 seconds for simulation speed
+            }, CONFIG.SIMULATION_SPEED_MS);
         }
     </script>
 </body>
