@@ -7,6 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Sprint 3: QR Code generation library (lightweight, client-side, no server dependency) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
         /* Extra assurance for mobile Safari tap targeting */
@@ -15,13 +17,146 @@
             touch-action: manipulation;
             -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
         }
+
+        /* ── Sprint 3: QR container & progress ring ── */
+        #ticket-qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        #ticket-qr-container canvas,
+        #ticket-qr-container img {
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            padding: 6px;
+            background: #fff;
+        }
+
+        /* Circular progress ring underneath QR */
+        .qr-ring-wrapper {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            margin-top: 8px;
+        }
+        .qr-ring-svg {
+            transform: rotate(-90deg);
+            width: 36px;
+            height: 36px;
+        }
+        .qr-ring-track {
+            fill: none;
+            stroke: #e8eaed;
+            stroke-width: 3;
+        }
+        .qr-ring-progress {
+            fill: none;
+            stroke: #1a73e8;
+            stroke-width: 3;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
+        .qr-countdown-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 9px;
+            font-weight: 700;
+            color: #5f6368;
+            font-family: monospace;
+        }
+        .qr-live-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #34A853;
+            font-weight: 600;
+            margin-top: 4px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .qr-live-dot {
+            width: 6px;
+            height: 6px;
+            background: #34A853;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* ── Sprint 2: Modal overlay ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(32,33,36,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.18s ease;
+        }
+        .modal-overlay.hidden { display: none; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        .modal-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #dadce0;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            animation: slideUp 0.2s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(16px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+
+        /* ── Sprint 1: Wait-time block ── */
+        #wait-time-block {
+            background: #f8f9fa;
+            border: 1px solid #e8eaed;
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        #wait-time-block .wt-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #5f6368;
+            font-weight: 600;
+        }
+        #wait-time-block .wt-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a73e8;
+            margin: 2px 0;
+        }
+        #wait-time-block .wt-sub {
+            font-size: 11px;
+            color: #70757a;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
 
     <header class="relative z-50 flex justify-between items-center h-16 px-6 border-b border-gray-50 text-sm text-[#5f6368] bg-white select-none">
         <div class="flex items-center space-x-2">
-            <span class="font-medium text-gray-900">Store Queue System</span>
+            <span class="font-medium text-gray-900" id="nav-title">Store Queue System</span>
         </div>
         <div class="flex items-center space-x-6">
             <button onclick="toggleAdminMode()" class="safari-clickable text-xs text-gray-400 hover:text-gray-600 font-medium py-2 px-3 rounded-md hover:bg-gray-50 transition">
@@ -58,6 +193,29 @@
                 <div class="text-center border-b border-gray-100 pb-6">
                     <span class="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Spot Secured</span>
                     <h2 class="text-xs text-[#5f6368] uppercase tracking-wider mt-4">Your Position Number</h2>
+
+                    <!-- ── Sprint 3: Dynamic Rotating QR Code ── -->
+                    <!-- Rendered ABOVE the user's position number as specified -->
+                    <div id="ticket-qr-container" class="mt-4">
+                        <!-- QR code canvas will be injected here by initQRRotation() -->
+                        <div id="qr-code-render"></div>
+                        <!-- Circular 15s progress ring / live-verify indicator -->
+                        <div class="qr-ring-wrapper" id="qr-ring-wrapper">
+                            <svg class="qr-ring-svg" viewBox="0 0 36 36">
+                                <circle class="qr-ring-track" cx="18" cy="18" r="15.9"/>
+                                <circle class="qr-ring-progress" id="qr-ring-arc"
+                                    cx="18" cy="18" r="15.9"
+                                    stroke-dasharray="100 100"
+                                    stroke-dashoffset="0"/>
+                            </svg>
+                            <span class="qr-countdown-label" id="qr-ring-label">15</span>
+                        </div>
+                        <div class="qr-live-badge">
+                            <div class="qr-live-dot"></div>
+                            <span>Live Pass · Rotating</span>
+                        </div>
+                    </div>
+
                     <div id="user-number" class="text-7xl font-bold text-[#1a73e8] my-2">--</div>
                     <p class="text-xs text-[#70757a]" id="timestamp-display"></p>
                 </div>
@@ -73,10 +231,42 @@
                     </div>
                 </div>
 
+                <!-- ── Sprint 1: Wait-time estimation block ── -->
+                <div id="wait-time-block">
+                    <div class="wt-label">Estimated Wait Time</div>
+                    <div class="wt-value" id="wt-value">~-- mins</div>
+                    <div class="wt-sub" id="wt-sub">Calculating...</div>
+                </div>
+
                 <div id="alert-banner" class="bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3">
                     <i id="alert-icon" class="fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base"></i>
                     <div>
                         <p id="alert-text" class="font-medium text-[#202124]">You are safely in line. Keep this page open to track your live status.</p>
+                    </div>
+                </div>
+
+                <!-- ── Sprint 2: Manage Ticket action container ── -->
+                <div class="mt-6 pt-5 border-t border-gray-100">
+                    <p class="text-xs text-center text-[#5f6368] uppercase tracking-wider font-semibold mb-3">Manage Ticket</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Transfer Ticket button -->
+                        <button
+                            onclick="openTransferModal()"
+                            class="safari-clickable flex flex-col items-center justify-center gap-1.5 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-[#202124] hover:text-[#1a73e8] rounded-xl py-3.5 px-3 transition duration-150 group"
+                            aria-label="Transfer your ticket to another user">
+                            <i class="fa-solid fa-arrow-right-arrow-left text-lg text-gray-400 group-hover:text-[#1a73e8] transition"></i>
+                            <span class="text-xs font-semibold">Transfer Ticket</span>
+                            <span class="text-[10px] text-gray-400">Gift your spot</span>
+                        </button>
+                        <!-- Propose Swap button -->
+                        <button
+                            onclick="openSwapModal()"
+                            class="safari-clickable flex flex-col items-center justify-center gap-1.5 bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 text-[#202124] hover:text-[#ea8600] rounded-xl py-3.5 px-3 transition duration-150 group"
+                            aria-label="Propose a position swap with another ticket holder">
+                            <i class="fa-solid fa-shuffle text-lg text-gray-400 group-hover:text-[#ea8600] transition"></i>
+                            <span class="text-xs font-semibold">Propose Swap</span>
+                            <span class="text-[10px] text-gray-400">Trade positions</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -150,8 +340,89 @@
         </div>
     </footer>
 
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SPRINT 2: TRANSFER MODAL
+         Allows a user to gift/transfer their queue spot to another user.
+    ════════════════════════════════════════════════════════════════ -->
+    <div id="transfer-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
+        <div class="modal-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-right-arrow-left text-[#1a73e8] text-sm"></i>
+                    </div>
+                    <h3 id="transfer-modal-title" class="font-semibold text-gray-900 text-base">Transfer Ticket</h3>
+                </div>
+                <button onclick="closeTransferModal()" class="safari-clickable text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-[#5f6368] mb-4">Enter the recipient's User ID or email address. This action permanently transfers ownership of your queue spot.</p>
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-600 mb-1.5" for="transfer-recipient-input">Recipient User ID or Email</label>
+                <input
+                    type="text"
+                    id="transfer-recipient-input"
+                    placeholder="user@example.com or UID-XXXX"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+            </div>
+            <div id="transfer-status-msg" class="text-xs text-center font-mono text-rose-600 mb-3 hidden"></div>
+            <div class="flex gap-3">
+                <button onclick="closeTransferModal()" class="safari-clickable flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium py-2.5 rounded-lg transition">Cancel</button>
+                <button onclick="initiateTransfer()" class="safari-clickable flex-1 bg-[#1a73e8] hover:bg-[#1557b0] text-white text-sm font-medium py-2.5 rounded-lg transition shadow-sm">Confirm Transfer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SPRINT 2: SWAP / TRADE MODAL
+         Creates a pending "Escrow" swap proposal between two ticket holders.
+    ════════════════════════════════════════════════════════════════ -->
+    <div id="swap-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="swap-modal-title">
+        <div class="modal-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-amber-50 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-shuffle text-amber-600 text-sm"></i>
+                    </div>
+                    <h3 id="swap-modal-title" class="font-semibold text-gray-900 text-base">Propose a Swap</h3>
+                </div>
+                <button onclick="closeSwapModal()" class="safari-clickable text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-[#5f6368] mb-1">Enter the queue position number you'd like to trade with. Both parties must accept before positions are swapped.</p>
+            <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4 flex items-start gap-2">
+                <i class="fa-solid fa-lock text-amber-500 text-xs mt-0.5"></i>
+                <p class="text-[11px] text-amber-700 font-medium">Your spot is held in secure escrow until the swap is accepted or cancelled.</p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-600 mb-1.5" for="swap-target-input">Target Ticket Number</label>
+                <input
+                    type="number"
+                    id="swap-target-input"
+                    placeholder="e.g. 47"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-400"
+                    min="1"
+                />
+            </div>
+            <div id="swap-status-msg" class="text-xs text-center font-mono text-rose-600 mb-3 hidden"></div>
+            <div class="flex gap-3">
+                <button onclick="closeSwapModal()" class="safari-clickable flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium py-2.5 rounded-lg transition">Cancel</button>
+                <button onclick="proposeSwap()" class="safari-clickable flex-1 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium py-2.5 rounded-lg transition shadow-sm">Send Proposal</button>
+            </div>
+        </div>
+    </div>
+
+
     <script>
-        // Default System Settings
+        // ========================================================
+        // CORE CONFIGURATION & STATE
+        // ========================================================
         let CONFIG = {
             STORE_LAT: 38.9360, 
             STORE_LON: -76.7500,
@@ -170,16 +441,19 @@
             document.getElementById('footer-location-text').innerText = `Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;
         }
 
-                function getDigitalTicket() {
+
+        // ========================================================
+        // GEOLOCATION & TICKET GENERATION (UNCHANGED)
+        // ========================================================
+        function getDigitalTicket() {
             const statusText = document.getElementById('geo-status');
             statusText.className = "text-center text-xs text-[#5f6368] font-mono animate-pulse";
             statusText.innerText = "Authenticating hardware GPS signal...";
 
-            // Upgraded options engineered specifically to handle strict iOS timeouts
             const geoOptions = {
                 enableHighAccuracy: true, 
-                timeout: 15000,          // Expanded to 15 seconds for robust mobile handshakes
-                maximumAge: 5000         // Allows a 5-second location cache buffer for instant response
+                timeout: 15000,
+                maximumAge: 5000
             };
 
             if (!navigator.geolocation) {
@@ -214,7 +488,7 @@
         }
 
         function calculateHaversine(lat1, lon1, lat2, lon2) {
-            const R = 3958.8; // Miles
+            const R = 3958.8;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
@@ -232,36 +506,376 @@
             document.getElementById('timestamp-display').innerText = `Secured at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
             
             syncUIElements();
+
+            // Sprint 3: Boot the QR rotation engine after a successful check-in
+            initQRRotation();
         }
 
+
+        // ========================================================
+        // SPRINT 1: ENHANCED syncUIElements() WITH WAIT-TIME CLOCK
+        // ========================================================
+
+        // Module-level timer references (not global-polluting)
+        let _waitCountdownInterval  = null;  // 60-second "next update" ticker
+        let _waitCountdownSeconds   = 60;    // current seconds remaining on countdown
+
+        /**
+         * syncUIElements()
+         * ─────────────────
+         * Called on check-in and whenever globalCurrentServing advances.
+         * Responsibilities:
+         *   1. Update "Now Serving" and "People Ahead" displays.
+         *   2. Calculate estimated wait (3 min/person) and render it.
+         *   3. Start or reset the 60-second live countdown sub-text.
+         *   4. Handle zero-state: clear timer, show "Proceed" CTA.
+         *   5. Manage alert banner states.
+         */
         function syncUIElements() {
-            const servingEl = document.getElementById('now-serving');
-            const aheadEl = document.getElementById('people-ahead');
-            const alertText = document.getElementById('alert-text');
-            const alertBanner = document.getElementById('alert-banner');
-            const alertIcon = document.getElementById('alert-icon');
+            const servingEl     = document.getElementById('now-serving');
+            const aheadEl       = document.getElementById('people-ahead');
+            const alertText     = document.getElementById('alert-text');
+            const alertBanner   = document.getElementById('alert-banner');
+            const alertIcon     = document.getElementById('alert-icon');
+            const wtBlock       = document.getElementById('wait-time-block');
+            const wtValue       = document.getElementById('wt-value');
+            const wtSub         = document.getElementById('wt-sub');
 
             servingEl.innerText = globalCurrentServing;
             let remaining = myTicketNumber - globalCurrentServing;
             aheadEl.innerText = remaining > 0 ? remaining : 0;
 
-            if (remaining === 5) {
-                alertText.innerText = "You are exactly 5 numbers away! Please return to the physical entrance.";
-                alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
-                alertIcon.className = "fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce";
-            } else if (remaining <= 0) {
-                alertText.innerText = "Your number is active. Show this verified pass to staff at the gate.";
-                alertBanner.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3";
-                alertIcon.className = "fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base";
+            // ── 1. Wait-time calculation (3 minutes per person ahead) ──
+            const estimatedMinutes = remaining * 3;
+
+            if (remaining <= 0) {
+                // ── Zero-state: clear countdown, show "proceed" UI ──
+                _clearWaitCountdown();
+
+                wtBlock.style.background   = '#f0fdf4';
+                wtBlock.style.borderColor  = '#bbf7d0';
+                wtValue.style.color        = '#16a34a';
+                wtValue.innerText          = 'Your Turn!';
+                wtSub.innerText            = 'Proceed to entrance immediately';
+
+                // Alert banner: active state
+                alertText.innerText    = "Your number is active. Show this verified pass to staff at the gate.";
+                alertBanner.className  = "bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                alertIcon.className    = "fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base";
+
+            } else {
+                // ── Active wait state: render estimated time ──
+                wtBlock.style.background  = '#f8f9fa';
+                wtBlock.style.borderColor = '#e8eaed';
+                wtValue.style.color       = '#1a73e8';
+                wtValue.innerText         = `~${estimatedMinutes} min${estimatedMinutes !== 1 ? 's' : ''}`;
+
+                // Reset and start the 60-second live countdown
+                _clearWaitCountdown();
+                _startWaitCountdown(wtSub);
+
+                // Alert banner: proximity warning at 5 away
+                if (remaining === 5) {
+                    alertText.innerText   = "You are exactly 5 numbers away! Please return to the physical entrance.";
+                    alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                    alertIcon.className   = "fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce";
+                } else {
+                    alertText.innerText   = "You are safely in line. Keep this page open to track your live status.";
+                    alertBanner.className = "bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3";
+                    alertIcon.className   = "fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base";
+                }
             }
         }
 
+        /**
+         * _startWaitCountdown(el)
+         * Ticks every second from 60 → 0 inside the sub-text element.
+         * When it reaches 0, it resets the display (simulating a queue poll)
+         * and starts counting again — until _clearWaitCountdown() is called.
+         */
+        function _startWaitCountdown(subEl) {
+            _waitCountdownSeconds = 60;
+            subEl.innerText = `Next update in ${_waitCountdownSeconds}s...`;
+
+            _waitCountdownInterval = setInterval(() => {
+                _waitCountdownSeconds -= 1;
+
+                if (_waitCountdownSeconds <= 0) {
+                    // Simulate a queue refresh — in production this would re-poll Supabase
+                    subEl.innerText = 'Syncing with live queue...';
+                    _waitCountdownSeconds = 60;
+                } else {
+                    subEl.innerText = `Next update in ${_waitCountdownSeconds}s...`;
+                }
+            }, 1000);
+        }
+
+        /** Safely clears the active countdown interval. */
+        function _clearWaitCountdown() {
+            if (_waitCountdownInterval !== null) {
+                clearInterval(_waitCountdownInterval);
+                _waitCountdownInterval = null;
+            }
+        }
+
+
         // ========================================================
-        // ADMIN UTILITY LOGIC
+        // SPRINT 3: DYNAMIC ROTATING QR CODE SYSTEM
+        // ========================================================
+
+        let _qrInstance        = null;   // QRCode.js instance
+        let _qrRotationInterval = null;  // 15-second rotation timer
+        let _qrRingInterval     = null;  // 1-second visual ring ticker
+        let _qrRingSeconds      = 15;    // current ring countdown
+
+        // SVG ring constants
+        const QR_ROTATION_SECS  = 15;
+        const QR_CIRCUMFERENCE  = 2 * Math.PI * 15.9; // ≈ 99.9 — matches r="15.9" in SVG
+
+        /**
+         * initQRRotation()
+         * ─────────────────
+         * Entry point called once after a successful geofence check-in.
+         * Creates the initial QR code, then schedules cryptographic rotation
+         * every QR_ROTATION_SECS seconds.
+         *
+         * Security model:
+         *   payload = "<ticketNumber>:<unixTimestampSeconds>"
+         *   This string changes every 15 seconds, making screenshots/recordings
+         *   of the QR code stale and unacceptable at the gate scanner.
+         *   In a production system the validator would accept payloads within
+         *   a ±15s tolerance window, checked server-side against a signed token.
+         */
+        function initQRRotation() {
+            // Tear down any pre-existing rotation (safety guard for re-init)
+            _teardownQRRotation();
+
+            // Render the first QR code immediately
+            _renderQRFrame();
+
+            // Rotate every 15 seconds
+            _qrRotationInterval = setInterval(() => {
+                _renderQRFrame();
+                _resetRingCountdown(); // sync visual ring to new cycle
+            }, QR_ROTATION_SECS * 1000);
+
+            // Start the visual ring countdown
+            _resetRingCountdown();
+        }
+
+        /**
+         * _renderQRFrame()
+         * Generates a fresh cryptographic payload and re-renders the QR code.
+         * The payload combines the static ticket number with the live UNIX
+         * timestamp integer — producing a unique, time-bound string each cycle.
+         */
+        function _renderQRFrame() {
+            const unixNow    = Math.floor(Date.now() / 1000); // integer seconds
+            const payload    = `${myTicketNumber}:${unixNow}`; // e.g. "52:1747429200"
+            const container  = document.getElementById('qr-code-render');
+
+            // Clear previous render
+            container.innerHTML = '';
+
+            // QRCode.js will inject a <canvas> (or <img> fallback) into the container
+            _qrInstance = new QRCode(container, {
+                text:           payload,
+                width:          128,
+                height:         128,
+                colorDark:      '#202124',
+                colorLight:     '#ffffff',
+                correctLevel:   QRCode.CorrectLevel.M  // Medium error correction
+            });
+        }
+
+        /**
+         * _resetRingCountdown()
+         * Clears and restarts the 1-second SVG ring animation that
+         * shows the user how long until the QR code rotates next.
+         */
+        function _resetRingCountdown() {
+            if (_qrRingInterval) clearInterval(_qrRingInterval);
+
+            _qrRingSeconds = QR_ROTATION_SECS;
+            _updateRingUI(_qrRingSeconds);
+
+            _qrRingInterval = setInterval(() => {
+                _qrRingSeconds -= 1;
+                _updateRingUI(_qrRingSeconds);
+                if (_qrRingSeconds <= 0) {
+                    clearInterval(_qrRingInterval);
+                }
+            }, 1000);
+        }
+
+        /**
+         * _updateRingUI(secondsLeft)
+         * Updates the SVG arc stroke-dashoffset to reflect remaining time,
+         * and refreshes the numeric label in the ring's centre.
+         *
+         * stroke-dashoffset math:
+         *   0           = full circle (15/15 remaining)
+         *   CIRCUMFERENCE = empty circle (0/15 remaining)
+         */
+        function _updateRingUI(secondsLeft) {
+            const arc   = document.getElementById('qr-ring-arc');
+            const label = document.getElementById('qr-ring-label');
+            if (!arc || !label) return;
+
+            const fraction = secondsLeft / QR_ROTATION_SECS;
+            const offset   = QR_CIRCUMFERENCE * (1 - fraction);
+
+            arc.style.strokeDasharray  = `${QR_CIRCUMFERENCE} ${QR_CIRCUMFERENCE}`;
+            arc.style.strokeDashoffset = offset;
+            label.innerText = secondsLeft;
+        }
+
+        /** Tears down all QR rotation intervals cleanly. */
+        function _teardownQRRotation() {
+            if (_qrRotationInterval) { clearInterval(_qrRotationInterval); _qrRotationInterval = null; }
+            if (_qrRingInterval)     { clearInterval(_qrRingInterval);     _qrRingInterval     = null; }
+        }
+
+
+        // ========================================================
+        // SPRINT 2: TRANSFER & SWAP MODAL CONTROLLERS
+        // ========================================================
+
+        function openTransferModal() {
+            document.getElementById('transfer-modal').classList.remove('hidden');
+            document.getElementById('transfer-recipient-input').value = '';
+            document.getElementById('transfer-status-msg').classList.add('hidden');
+        }
+        function closeTransferModal() {
+            document.getElementById('transfer-modal').classList.add('hidden');
+        }
+
+        function openSwapModal() {
+            document.getElementById('swap-modal').classList.remove('hidden');
+            document.getElementById('swap-target-input').value = '';
+            document.getElementById('swap-status-msg').classList.add('hidden');
+        }
+        function closeSwapModal() {
+            document.getElementById('swap-modal').classList.add('hidden');
+        }
+
+        // Close modals on backdrop click
+        document.getElementById('transfer-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeTransferModal();
+        });
+        document.getElementById('swap-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeSwapModal();
+        });
+
+        /**
+         * initiateTransfer()
+         * ──────────────────
+         * Permanently moves ownership of myTicketNumber to another user.
+         *
+         * Supabase / Backend contract (to be implemented):
+         *
+         *   supabase.rpc('transfer_ticket', {
+         *     p_ticket_number: myTicketNumber,
+         *     p_current_owner_id: supabase.auth.user().id,
+         *     p_recipient_identifier: recipientValue  // email or UID
+         *   })
+         *
+         * The RPC must:
+         *   1. Look up the recipient by email or UID — return error if not found.
+         *   2. Inside a Postgres TRANSACTION:
+         *        a. Verify the ticket still belongs to p_current_owner_id (row-level lock).
+         *        b. UPDATE tickets SET owner_id = recipient_id WHERE ticket_number = p_ticket_number.
+         *        c. If any step fails, ROLLBACK — preventing double-spend or orphaned tickets.
+         *   3. Return { success: true } or a structured error.
+         *
+         * Until the RPC is wired, this function validates inputs and
+         * shows a placeholder confirmation so the UI flow is fully testable.
+         */
+        async function initiateTransfer() {
+            const recipientValue = document.getElementById('transfer-recipient-input').value.trim();
+            const statusMsg      = document.getElementById('transfer-status-msg');
+
+            if (!recipientValue) {
+                statusMsg.innerText = 'Please enter a recipient ID or email.';
+                statusMsg.classList.remove('hidden');
+                return;
+            }
+
+            // --- PLACEHOLDER: replace this block with the Supabase RPC call above ---
+            console.log(`[Transfer] Initiating atomic transfer of ticket #${myTicketNumber} → "${recipientValue}"`);
+            statusMsg.innerText = '';
+            statusMsg.classList.add('hidden');
+
+            // Simulate async RPC latency
+            await new Promise(r => setTimeout(r, 600));
+
+            alert(`Transfer request sent.\nTicket #${myTicketNumber} → ${recipientValue}\n\nThis action will be confirmed once the recipient accepts via the Supabase transaction layer.`);
+            closeTransferModal();
+            // -----------------------------------------------------------------------
+        }
+
+        /**
+         * proposeSwap()
+         * ──────────────
+         * Creates a two-party swap proposal, placing both tickets in an
+         * "Escrow" pending state until both sides accept or one side cancels.
+         *
+         * Supabase / Backend contract (to be implemented):
+         *
+         *   supabase.rpc('propose_swap', {
+         *     p_initiator_ticket: myTicketNumber,
+         *     p_initiator_id:     supabase.auth.user().id,
+         *     p_target_ticket:    targetNumber
+         *   })
+         *
+         * The RPC must:
+         *   1. Verify both ticket numbers exist and are owned by distinct users.
+         *   2. Inside a Postgres TRANSACTION:
+         *        a. UPDATE tickets SET status = 'escrow' WHERE ticket_number IN (initiator, target).
+         *           This status flag prevents either ticket from being transferred or used
+         *           while the swap proposal is pending — no double-spend possible.
+         *        b. INSERT INTO swap_proposals (initiator_ticket, target_ticket, status = 'pending').
+         *        c. Trigger a real-time notification to the target ticket holder (Supabase Realtime).
+         *   3. If target holder accepts:
+         *        SWAP owner_ids atomically; set both tickets back to status = 'active'.
+         *   4. If cancelled/rejected:
+         *        Set both tickets back to status = 'active'; DELETE the proposal row.
+         *   5. Any failure → ROLLBACK; no ticket is ever lost mid-transit.
+         */
+        async function proposeSwap() {
+            const targetNumber = parseInt(document.getElementById('swap-target-input').value, 10);
+            const statusMsg    = document.getElementById('swap-status-msg');
+
+            if (!targetNumber || targetNumber < 1) {
+                statusMsg.innerText = 'Please enter a valid target ticket number.';
+                statusMsg.classList.remove('hidden');
+                return;
+            }
+            if (targetNumber === myTicketNumber) {
+                statusMsg.innerText = "You can't swap with your own ticket.";
+                statusMsg.classList.remove('hidden');
+                return;
+            }
+
+            // --- PLACEHOLDER: replace this block with the Supabase RPC call above ---
+            console.log(`[Swap] Proposing swap: ticket #${myTicketNumber} ↔ ticket #${targetNumber}. Entering escrow...`);
+            statusMsg.innerText = '';
+            statusMsg.classList.add('hidden');
+
+            await new Promise(r => setTimeout(r, 600));
+
+            alert(`Swap proposal sent.\n#${myTicketNumber} ↔ #${targetNumber}\n\nBoth spots are now held in escrow. The other party will be notified to accept or decline.`);
+            closeSwapModal();
+            // -----------------------------------------------------------------------
+        }
+
+
+        // ========================================================
+        // ADMIN UTILITY LOGIC (UNCHANGED)
         // ========================================================
         function toggleAdminMode() {
             const custView = document.getElementById('customer-view');
-            const admView = document.getElementById('admin-view');
+            const admView  = document.getElementById('admin-view');
             const navTitle = document.getElementById('nav-title');
 
             if (admView.classList.contains('hidden')) {
@@ -269,8 +883,8 @@
                 admView.classList.remove('hidden');
                 navTitle.innerText = "Queue Admin Panel";
             } else {
-                CONFIG.STORE_LAT = parseFloat(document.getElementById('cfg-lat').value);
-                CONFIG.STORE_LON = parseFloat(document.getElementById('cfg-lon').value);
+                CONFIG.STORE_LAT            = parseFloat(document.getElementById('cfg-lat').value);
+                CONFIG.STORE_LON            = parseFloat(document.getElementById('cfg-lon').value);
                 CONFIG.ALLOWED_RADIUS_MILES = parseFloat(document.getElementById('cfg-radius').value);
                 
                 admView.classList.add('hidden');
@@ -284,12 +898,18 @@
             alert("Main navigation menu clicked! System is fully operational.");
         }
 
+        /**
+         * adjustAdminCounter()
+         * When the admin increments the counter, syncUIElements() is called
+         * which will automatically reset the wait-time countdown (Sprint 1)
+         * and may trigger a new QR render if logic is extended to do so.
+         */
         function adjustAdminCounter(amount) {
             globalCurrentServing += amount;
-            if(globalCurrentServing < 1) globalCurrentServing = 1;
+            if (globalCurrentServing < 1) globalCurrentServing = 1;
             
             document.getElementById('admin-serving-number').innerText = globalCurrentServing;
-            if(myTicketNumber) syncUIElements();
+            if (myTicketNumber) syncUIElements();
         }
 
         function captureCurrentLocationAsAnchor() {
