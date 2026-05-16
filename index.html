@@ -2,31 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Queue - Spot Holder</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+        /* Extra assurance for mobile Safari tap targeting */
+        .safari-clickable {
+            cursor: pointer !important;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
     </style>
 </head>
 <body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
 
-            <header class="flex justify-between items-center p-4 text-sm text-[#5f6368]">
+    <header class="relative z-50 flex justify-between items-center h-16 px-6 border-b border-gray-50 text-sm text-[#5f6368] bg-white select-none">
         <div class="flex items-center space-x-2">
-            <span class="font-medium text-gray-900" id="nav-title">Store Queue System</span>
+            <span class="font-medium text-gray-900">Store Queue System</span>
         </div>
-        <div class="flex items-center space-x-4">
-            <button onclick="toggleAdminMode()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;" class="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 font-medium">Admin Portal</button>
-            <i onclick="toggleMenuDemo()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;" class="fa-solid fa-bars text-lg text-[#5f6368]"></i>
+        <div class="flex items-center space-x-6">
+            <button onclick="toggleAdminMode()" class="safari-clickable text-xs text-gray-400 hover:text-gray-600 font-medium py-2 px-3 rounded-md hover:bg-gray-50 transition">
+                Admin Portal
+            </button>
+            <button onclick="toggleMenuDemo()" class="safari-clickable text-[#5f6368] hover:text-gray-900 p-2 rounded-md hover:bg-gray-50 transition">
+                <i class="fa-solid fa-bars text-lg"></i>
+            </button>
         </div>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center px-4 -mt-16">
+    <main class="flex-grow flex flex-col items-center justify-center px-4 py-8 relative z-10">
         
         <div id="customer-view" class="w-full max-w-md flex flex-col items-center">
-            <div class="text-center mb-8">
+            <div class="text-center mb-8 select-none">
                 <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">
                     <span class="text-[#4285F4]">Q</span><span class="text-[#EA4335]">u</span><span class="text-[#FBBC05]">e</span><span class="text-[#4285F4]">u</span><span class="text-[#34A853]">e</span><span class="text-[#EA4335]">.</span>
                 </h1>
@@ -36,7 +46,7 @@
             <div id="join-card" class="w-full bg-white rounded-2xl border border-[#dadce0] p-6 shadow-sm">
                 <p class="text-center text-sm text-[#5f6368] mb-6">Verify your physical location to secure your digital placeholder number.</p>
                 <div class="space-y-4">
-                    <button onclick="getDigitalTicket()" class="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 shadow-sm cursor-pointer">
+                    <button onclick="getDigitalTicket()" class="safari-clickable w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 shadow-sm">
                         <i class="fa-solid fa-location-dot"></i>
                         <span>Scan & Check In</span>
                     </button>
@@ -84,9 +94,9 @@
             <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center mb-6">
                 <p class="text-xs uppercase font-semibold text-gray-500 tracking-wider">Active Counter Control</p>
                 <div class="flex items-center justify-center space-x-6 my-4">
-                    <button onclick="adjustAdminCounter(-1)" class="w-12 h-12 bg-white rounded-full border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-100 font-bold text-lg cursor-pointer">-</button>
+                    <button onclick="adjustAdminCounter(-1)" class="safari-clickable w-12 h-12 bg-white rounded-full border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-100 font-bold text-lg">-</button>
                     <span id="admin-serving-number" class="text-6xl font-black text-gray-900">1</span>
-                    <button onclick="adjustAdminCounter(1)" class="w-12 h-12 bg-blue-600 rounded-full shadow-md text-white hover:bg-blue-700 font-bold text-lg cursor-pointer">+</button>
+                    <button onclick="adjustAdminCounter(1)" class="safari-clickable w-12 h-12 bg-blue-600 rounded-full shadow-md text-white hover:bg-blue-700 font-bold text-lg">+</button>
                 </div>
                 <p class="text-xs text-gray-400">Clicking '+' will instantly update all checked-in customer phones live.</p>
             </div>
@@ -115,7 +125,7 @@
                     </select>
                 </div>
 
-                <button onclick="captureCurrentLocationAsAnchor()" class="w-full bg-gray-800 hover:bg-gray-900 text-white text-xs font-medium py-2 rounded-lg transition cursor-pointer">
+                <button onclick="captureCurrentLocationAsAnchor()" class="safari-clickable w-full bg-gray-800 hover:bg-gray-900 text-white text-xs font-medium py-2 rounded-lg transition">
                     <i class="fa-solid fa-crosshairs mr-1"></i> Use My Current Location as Drop Center
                 </button>
             </div>
@@ -123,7 +133,7 @@
 
     </main>
 
-    <footer class="bg-[#f2f2f2] border-t border-[#e4e4e4] text-xs text-[#70757a]">
+    <footer class="bg-[#f2f2f2] border-t border-[#e4e4e4] text-xs text-[#70757a] relative z-20">
         <div class="px-6 py-3 border-b border-[#e4e4e4] flex items-center justify-between">
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-building text-gray-400"></i>
@@ -167,7 +177,7 @@
 
             const geoOptions = {
                 enableHighAccuracy: true, 
-                timeout: 7000, // Balanced timeout window for mobile phones
+                timeout: 7000, 
                 maximumAge: 0
             };
 
@@ -198,8 +208,6 @@
         function errorGPS(error) {
             const statusText = document.getElementById('geo-status');
             statusText.className = "text-center text-xs text-amber-600 font-mono bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2";
-            
-            // Helpful UX fallback for strict mobile privacy settings
             statusText.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>Mobile GPS Sync Issue.</strong><br>Ensure Wi-Fi is toggled on to assist tracking, or check app location permissions.`;
             console.warn(`Geolocation Error (${error.code}): ${error.message}`);
         }
@@ -213,7 +221,6 @@
         }
 
         function generateTicket() {
-            // Simulated local check-in placement index logic
             myTicketNumber = Math.floor(Math.random() * 12) + 45; 
             
             document.getElementById('join-card').classList.add('hidden');
@@ -226,7 +233,6 @@
             syncUIElements();
         }
 
-        // Live Dynamic State Sync
         function syncUIElements() {
             const servingEl = document.getElementById('now-serving');
             const aheadEl = document.getElementById('people-ahead');
@@ -249,7 +255,7 @@
             }
         }
 
-                // ========================================================
+        // ========================================================
         // ADMIN UTILITY LOGIC
         // ========================================================
         function toggleAdminMode() {
@@ -273,7 +279,6 @@
             }
         }
 
-        // PASTE THE NEW FUNCTION DIRECTLY HERE:
         function toggleMenuDemo() {
             alert("Main navigation menu clicked! System is fully operational.");
         }
