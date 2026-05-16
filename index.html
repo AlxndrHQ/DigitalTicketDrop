@@ -13,13 +13,13 @@
 </head>
 <body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
 
-    <header class="flex justify-between items-center p-4 text-sm text-[#5f6368]">
+            <header class="flex justify-between items-center p-4 text-sm text-[#5f6368]">
         <div class="flex items-center space-x-2">
             <span class="font-medium text-gray-900" id="nav-title">Store Queue System</span>
         </div>
         <div class="flex items-center space-x-4">
-            <button onclick="toggleAdminMode()" class="text-xs text-gray-400 hover:text-gray-600">Admin Portal</button>
-            <i class="fa-solid fa-bars text-lg cursor-pointer"></i>
+            <button onclick="toggleAdminMode()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;" class="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 font-medium">Admin Portal</button>
+            <i onclick="toggleMenuDemo()" style="cursor: pointer; -webkit-tap-highlight-color: transparent;" class="fa-solid fa-bars text-lg text-[#5f6368]"></i>
         </div>
     </header>
 
@@ -249,7 +249,7 @@
             }
         }
 
-        // ========================================================
+                // ========================================================
         // ADMIN UTILITY LOGIC
         // ========================================================
         function toggleAdminMode() {
@@ -262,7 +262,6 @@
                 admView.classList.remove('hidden');
                 navTitle.innerText = "Queue Admin Panel";
             } else {
-                // Apply layout settings from admin inputs back to application state
                 CONFIG.STORE_LAT = parseFloat(document.getElementById('cfg-lat').value);
                 CONFIG.STORE_LON = parseFloat(document.getElementById('cfg-lon').value);
                 CONFIG.ALLOWED_RADIUS_MILES = parseFloat(document.getElementById('cfg-radius').value);
@@ -272,6 +271,11 @@
                 navTitle.innerText = "Store Queue System";
                 updateLocationStatusFooter();
             }
+        }
+
+        // PASTE THE NEW FUNCTION DIRECTLY HERE:
+        function toggleMenuDemo() {
+            alert("Main navigation menu clicked! System is fully operational.");
         }
 
         function adjustAdminCounter(amount) {
