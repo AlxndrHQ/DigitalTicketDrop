@@ -170,15 +170,16 @@
             document.getElementById('footer-location-text').innerText = `Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;
         }
 
-        function getDigitalTicket() {
+                function getDigitalTicket() {
             const statusText = document.getElementById('geo-status');
             statusText.className = "text-center text-xs text-[#5f6368] font-mono animate-pulse";
             statusText.innerText = "Authenticating hardware GPS signal...";
 
+            // Upgraded options engineered specifically to handle strict iOS timeouts
             const geoOptions = {
                 enableHighAccuracy: true, 
-                timeout: 7000, 
-                maximumAge: 0
+                timeout: 15000,          // Expanded to 15 seconds for robust mobile handshakes
+                maximumAge: 5000         // Allows a 5-second location cache buffer for instant response
             };
 
             if (!navigator.geolocation) {
