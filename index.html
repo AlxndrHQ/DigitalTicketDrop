@@ -4,91 +4,132 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Queue - Spot Holder</title>
-    <!-- Tailwind CSS for clean styling -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- FontAwesome for clean Google-style icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
+        body { font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
     </style>
 </head>
 <body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
 
-    <!-- Top Navigation Bar (Google Style) -->
     <header class="flex justify-between items-center p-4 text-sm text-[#5f6368]">
-        <div class="flex items-center space-space-x-2">
-            <span class="font-medium text-gray-900">Store Queue System</span>
+        <div class="flex items-center space-x-2">
+            <span class="font-medium text-gray-900" id="nav-title">Store Queue System</span>
         </div>
         <div class="flex items-center space-x-4">
-            <a href="#" class="hover:underline">Help</a>
-            <i class="fa-solid fa-bars text-lg cursor-pointer text-[#5f6368]"></i>
+            <button onclick="toggleAdminMode()" class="text-xs text-gray-400 hover:text-gray-600">Admin Portal</button>
+            <i class="fa-solid fa-bars text-lg cursor-pointer"></i>
         </div>
     </header>
 
-    <!-- Main Content Area -->
     <main class="flex-grow flex flex-col items-center justify-center px-4 -mt-16">
         
-        <!-- Minimalist Logo Area -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">
-                <span class="text-[#4285F4]">Q</span><span class="text-[#EA4335]">u</span><span class="text-[#FBBC05]">e</span><span class="text-[#4285F4]">u</span><span class="text-[#34A853]">e</span><span class="text-[#EA4335]">.</span>
-            </h1>
-            <p class="text-xs text-[#5f6368] mt-2 uppercase tracking-widest font-mono">Secure Drop Access</p>
-        </div>
-
-        <!-- Step 1: Join the Line (Initial View) -->
-        <div id="join-card" class="w-full max-w-md bg-white rounded-2xl border border-[#dadce0] p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <p class="text-center text-sm text-[#5f6368] mb-6">Verify your location to secure your digital placeholder number.</p>
-            
-            <div class="space-y-4">
-                <button onclick="getDigitalTicket()" class="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 shadow-sm">
-                    <i class="fa-solid fa-location-dot"></i>
-                    <span>Scan & Check In</span>
-                </button>
-                
-                <p id="geo-status" class="text-center text-xs text-[#5f6368] font-mono"></p>
-            </div>
-        </div>
-
-        <!-- Step 2: Active Ticket View (Google Card Style) -->
-        <div id="ticket-card" class="w-full max-w-md bg-white rounded-2xl border border-[#dadce0] p-8 shadow-sm hidden">
-            <div class="text-center border-b border-gray-100 pb-6">
-                <span class="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Spot Secured</span>
-                <h2 class="text-xs text-[#5f6368] uppercase tracking-wider mt-4">Your Position Number</h2>
-                <div id="user-number" class="text-7xl font-bold text-[#1a73e8] my-2">--</div>
-                <p class="text-xs text-[#70757a]" id="timestamp-display"></p>
+        <div id="customer-view" class="w-full max-w-md flex flex-col items-center">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">
+                    <span class="text-[#4285F4]">Q</span><span class="text-[#EA4335]">u</span><span class="text-[#FBBC05]">e</span><span class="text-[#4285F4]">u</span><span class="text-[#34A853]">e</span><span class="text-[#EA4335]">.</span>
+                </h1>
+                <p class="text-xs text-[#5f6368] mt-2 uppercase tracking-widest font-mono">Secure Drop Access</p>
             </div>
 
-            <!-- Dynamic Live Status Grid -->
-            <div class="grid grid-cols-2 gap-4 my-6 text-center">
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <span class="text-xs text-[#5f6368] block">Now Serving</span>
-                    <span id="now-serving" class="text-3xl font-bold text-[#ea4335]">1</span>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <span class="text-xs text-[#5f6368] block">People Ahead</span>
-                    <span id="people-ahead" class="text-3xl font-bold text-[#fbbc05]">--</span>
+            <div id="join-card" class="w-full bg-white rounded-2xl border border-[#dadce0] p-6 shadow-sm">
+                <p class="text-center text-sm text-[#5f6368] mb-6">Verify your physical location to secure your digital placeholder number.</p>
+                <div class="space-y-4">
+                    <button onclick="getDigitalTicket()" class="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 shadow-sm cursor-pointer">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Scan & Check In</span>
+                    </button>
+                    <p id="geo-status" class="text-center text-xs text-[#5f6368] font-mono"></p>
                 </div>
             </div>
 
-            <!-- Live Alert Box -->
-            <div id="alert-banner" class="bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3">
-                <i id="alert-icon" class="fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base"></i>
+            <div id="ticket-card" class="w-full bg-white rounded-2xl border border-[#dadce0] p-8 shadow-sm hidden">
+                <div class="text-center border-b border-gray-100 pb-6">
+                    <span class="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Spot Secured</span>
+                    <h2 class="text-xs text-[#5f6368] uppercase tracking-wider mt-4">Your Position Number</h2>
+                    <div id="user-number" class="text-7xl font-bold text-[#1a73e8] my-2">--</div>
+                    <p class="text-xs text-[#70757a]" id="timestamp-display"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 my-6 text-center">
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <span class="text-xs text-[#5f6368] block">Now Serving</span>
+                        <span id="now-serving" class="text-3xl font-bold text-[#ea4335]">1</span>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <span class="text-xs text-[#5f6368] block">People Ahead</span>
+                        <span id="people-ahead" class="text-3xl font-bold text-[#fbbc05]">--</span>
+                    </div>
+                </div>
+
+                <div id="alert-banner" class="bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3">
+                    <i id="alert-icon" class="fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base"></i>
+                    <div>
+                        <p id="alert-text" class="font-medium text-[#202124]">You are safely in line. Keep this page open to track your live status.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-view" class="w-full max-w-lg bg-white rounded-2xl border border-dashed border-gray-300 p-6 hidden">
+            <div class="border-b border-gray-100 pb-4 mb-6 flex justify-between items-center">
                 <div>
-                    <p id="alert-text" class="font-medium text-[#202124]">You are safely in line. We will alert you when your turn approaches.</p>
+                    <h2 class="text-xl font-bold text-gray-900">Organizer Dashboard</h2>
+                    <p class="text-xs text-gray-500">Live Drop Controller Control Panel</p>
                 </div>
+                <span class="bg-blue-50 text-blue-700 text-xs font-mono px-2 py-1 rounded">Host Mode</span>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center mb-6">
+                <p class="text-xs uppercase font-semibold text-gray-500 tracking-wider">Active Counter Control</p>
+                <div class="flex items-center justify-center space-x-6 my-4">
+                    <button onclick="adjustAdminCounter(-1)" class="w-12 h-12 bg-white rounded-full border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-100 font-bold text-lg cursor-pointer">-</button>
+                    <span id="admin-serving-number" class="text-6xl font-black text-gray-900">1</span>
+                    <button onclick="adjustAdminCounter(1)" class="w-12 h-12 bg-blue-600 rounded-full shadow-md text-white hover:bg-blue-700 font-bold text-lg cursor-pointer">+</button>
+                </div>
+                <p class="text-xs text-gray-400">Clicking '+' will instantly update all checked-in customer phones live.</p>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-sm font-semibold text-gray-700"><i class="fa-solid fa-earth-americas mr-1"></i> Geofence Bounds</h3>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Target Latitude</label>
+                        <input type="number" id="cfg-lat" step="0.0001" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Target Longitude</label>
+                        <input type="number" id="cfg-lon" step="0.0001" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Allowed Check-In Radius (Miles)</label>
+                    <select id="cfg-radius" class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+                        <option value="0.05">0.05 Miles (approx 250 feet - Strict Door Only)</option>
+                        <option value="0.25">0.25 Miles (approx 1,300 feet - Block Radius)</option>
+                        <option value="1.0" selected>1.0 Mile (Standard Neighborhood Zone)</option>
+                        <option value="5.0">5.0 Miles (Wide City Area)</option>
+                    </select>
+                </div>
+
+                <button onclick="captureCurrentLocationAsAnchor()" class="w-full bg-gray-800 hover:bg-gray-900 text-white text-xs font-medium py-2 rounded-lg transition cursor-pointer">
+                    <i class="fa-solid fa-crosshairs mr-1"></i> Use My Current Location as Drop Center
+                </button>
             </div>
         </div>
 
     </main>
 
-    <!-- Footer (Google Style) -->
     <footer class="bg-[#f2f2f2] border-t border-[#e4e4e4] text-xs text-[#70757a]">
-        <div class="px-6 py-3 border-b border-[#e4e4e4] flex items-center space-x-2">
-            <i class="fa-solid fa-building text-gray-400"></i>
-            <span class="font-medium text-gray-600">Verified Drop Location: Launch Site Alpha</span>
+        <div class="px-6 py-3 border-b border-[#e4e4e4] flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-building text-gray-400"></i>
+                <span class="font-medium text-gray-600" id="footer-location-text">Target: Initializing...</span>
+            </div>
+            <span id="distance-debug" class="text-[10px] font-mono text-gray-400"></span>
         </div>
         <div class="px-6 py-3 flex flex-wrap justify-between items-center gap-y-2">
             <div class="flex space-x-6">
@@ -99,104 +140,81 @@
         </div>
     </footer>
 
-    <!-- Frontend Queue Simulation Logic -->
-        <script>
-        // ========================================================
-        // ORGANIZER CONFIGURATION PANEL
-        // ========================================================
-        // Set this to your exact coordinate anchor (e.g., your house)
-        const CONFIG = {
-            STORE_LAT: 38.9360,          // Example Latitude (Adjust to your exact coordinates)
-            STORE_LON: -76.7500,         // Example Longitude (Adjust to your exact coordinates)
-            ALLOWED_RADIUS_MILES: 1.0,   // Geofence boundary size (e.g., 1.0 mile radius)
-            SIMULATION_SPEED_MS: 4000    // How fast the queue moves in the preview (4 seconds)
+    <script>
+        // Default System Settings
+        let CONFIG = {
+            STORE_LAT: 38.9360, 
+            STORE_LON: -76.7500,
+            ALLOWED_RADIUS_MILES: 1.0
         };
 
-        // Live App State
         let myTicketNumber = null;
-        let currentLiveServing = 1;
+        let globalCurrentServing = 1;
+
+        // Initialize values into Admin Panel on startup
+        document.getElementById('cfg-lat').value = CONFIG.STORE_LAT;
+        document.getElementById('cfg-lon').value = CONFIG.STORE_LON;
+        updateLocationStatusFooter();
+
+        function updateLocationStatusFooter() {
+            document.getElementById('footer-location-text').innerText = `Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;
+        }
 
         function getDigitalTicket() {
             const statusText = document.getElementById('geo-status');
             statusText.className = "text-center text-xs text-[#5f6368] font-mono animate-pulse";
-            statusText.innerText = "Requesting precise GPS coordinates...";
+            statusText.innerText = "Authenticating hardware GPS signal...";
 
-            // Configuration options to help mobile browsers resolve location faster
             const geoOptions = {
                 enableHighAccuracy: true, 
-                timeout: 10000,           // 10 seconds timeout
-                maximumAge: 0             // Force fresh location, no cache
+                timeout: 7000, // Balanced timeout window for mobile phones
+                maximumAge: 0
             };
 
             if (!navigator.geolocation) {
-                statusText.className = "text-center text-xs text-red-500 font-mono";
-                statusText.innerText = "Geolocation is not supported by this browser.";
+                statusText.innerText = "Location tracking unavailable on this operating system.";
                 return;
             }
 
             navigator.geolocation.getCurrentPosition(successGPS, errorGPS, geoOptions);
         }
 
-        // Triggered when the browser successfully returns GPS data
         function successGPS(position) {
             const statusText = document.getElementById('geo-status');
-            const userLat = position.coords.latitude;
-            const userLon = position.coords.longitude;
+            const uLat = position.coords.latitude;
+            const uLon = position.coords.longitude;
             
-            // Calculate real physical distance
-            const distanceAway = calculateHaversineDistance(userLat, userLon, CONFIG.STORE_LAT, CONFIG.STORE_LON);
-            
-            console.log(`User Lat: ${userLat}, Lon: ${userLon}`);
-            console.log(`Distance to anchor: ${distanceAway.toFixed(3)} miles`);
+            const distanceAway = calculateHaversine(uLat, uLon, CONFIG.STORE_LAT, CONFIG.STORE_LON);
+            document.getElementById('distance-debug').innerText = `${distanceAway.toFixed(3)} mi away`;
 
-            // Check if user is inside the organizer's geofence
             if (distanceAway <= CONFIG.ALLOWED_RADIUS_MILES) {
-                // SUCCESS: User is physically present at the venue
                 generateTicket();
             } else {
-                // FAILURE: User is trying to spoof or join from home
                 statusText.className = "text-center text-xs text-rose-600 font-mono bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2";
-                statusText.innerHTML = `<i class="fa-solid fa-person-shelter"></i> <strong>Out of Bounds.</strong><br>You are ${distanceAway.toFixed(2)} miles away. You must be within ${CONFIG.ALLOWED_RADIUS_MILES} mile of the venue to secure a ticket.`;
+                statusText.innerHTML = `<i class="fa-solid fa-ban"></i> <strong>Out of Bounds.</strong><br>You are ${distanceAway.toFixed(2)} miles away. You must enter the geofence perimeter to secure a position.`;
             }
         }
 
-        // Triggered if user blocks location or GPS fails
         function errorGPS(error) {
             const statusText = document.getElementById('geo-status');
             statusText.className = "text-center text-xs text-amber-600 font-mono bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2";
             
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    statusText.innerHTML = `<i class="fa-solid fa-lock"></i> <strong>Location Access Denied.</strong><br>Please enable location permissions in your browser/device settings for this site to verify you are at the line.`;
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    statusText.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> <strong>GPS Signal Weak.</strong><br>Unable to determine your physical location. If you are indoors, try moving closer to a window.`;
-                    break;
-                case error.TIMEOUT:
-                    statusText.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> <strong>Location Timeout.</strong><br>The request timed out. Please try clicking the button again.`;
-                    break;
-            }
+            // Helpful UX fallback for strict mobile privacy settings
+            statusText.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>Mobile GPS Sync Issue.</strong><br>Ensure Wi-Fi is toggled on to assist tracking, or check app location permissions.`;
+            console.warn(`Geolocation Error (${error.code}): ${error.message}`);
         }
 
-        // The Core Geofencing Math Formula
-        function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 3958.8; // Radius of the Earth in MILES (use 6371 for kilometers)
+        function calculateHaversine(lat1, lon1, lat2, lon2) {
+            const R = 3958.8; // Miles
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            
-            const a = 
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c; 
-            return distance; // Returns distance in miles
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
-        // UI Transition to reveal the digital ticket
         function generateTicket() {
-            // Simulate assignment of ticket number (e.g., ticket #47)
-            myTicketNumber = Math.floor(Math.random() * 10) + 42; 
+            // Simulated local check-in placement index logic
+            myTicketNumber = Math.floor(Math.random() * 12) + 45; 
             
             document.getElementById('join-card').classList.add('hidden');
             document.getElementById('ticket-card').classList.remove('hidden');
@@ -205,38 +223,72 @@
             const now = new Date();
             document.getElementById('timestamp-display').innerText = `Secured at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
             
-            startLiveQueueSimulation();
+            syncUIElements();
         }
 
-        function startLiveQueueSimulation() {
+        // Live Dynamic State Sync
+        function syncUIElements() {
             const servingEl = document.getElementById('now-serving');
             const aheadEl = document.getElementById('people-ahead');
             const alertText = document.getElementById('alert-text');
             const alertBanner = document.getElementById('alert-banner');
             const alertIcon = document.getElementById('alert-icon');
 
-            aheadEl.innerText = myTicketNumber - currentLiveServing;
+            servingEl.innerText = globalCurrentServing;
+            let remaining = myTicketNumber - globalCurrentServing;
+            aheadEl.innerText = remaining > 0 ? remaining : 0;
 
-            const interval = setInterval(() => {
-                if (currentLiveServing < myTicketNumber) {
-                    currentLiveServing++;
-                    servingEl.innerText = currentLiveServing;
-                    
-                    let remaining = myTicketNumber - currentLiveServing;
-                    aheadEl.innerText = remaining;
+            if (remaining === 5) {
+                alertText.innerText = "You are exactly 5 numbers away! Please return to the physical entrance.";
+                alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                alertIcon.className = "fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce";
+            } else if (remaining <= 0) {
+                alertText.innerText = "Your number is active. Show this verified pass to staff at the gate.";
+                alertBanner.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                alertIcon.className = "fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base";
+            }
+        }
 
-                    if (remaining === 5) {
-                        alertText.innerText = "You are 5 numbers away! Please head to the store entrance now.";
-                        alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
-                        alertIcon.className = "fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce";
-                    } else if (remaining === 0) {
-                        alertText.innerText = "Your number is active. Present this screen to the door staff for entry.";
-                        alertBanner.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3";
-                        alertIcon.className = "fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base";
-                        clearInterval(interval);
-                    }
-                }
-            }, CONFIG.SIMULATION_SPEED_MS);
+        // ========================================================
+        // ADMIN UTILITY LOGIC
+        // ========================================================
+        function toggleAdminMode() {
+            const custView = document.getElementById('customer-view');
+            const admView = document.getElementById('admin-view');
+            const navTitle = document.getElementById('nav-title');
+
+            if (admView.classList.contains('hidden')) {
+                custView.classList.add('hidden');
+                admView.classList.remove('hidden');
+                navTitle.innerText = "Queue Admin Panel";
+            } else {
+                // Apply layout settings from admin inputs back to application state
+                CONFIG.STORE_LAT = parseFloat(document.getElementById('cfg-lat').value);
+                CONFIG.STORE_LON = parseFloat(document.getElementById('cfg-lon').value);
+                CONFIG.ALLOWED_RADIUS_MILES = parseFloat(document.getElementById('cfg-radius').value);
+                
+                admView.classList.add('hidden');
+                custView.classList.remove('hidden');
+                navTitle.innerText = "Store Queue System";
+                updateLocationStatusFooter();
+            }
+        }
+
+        function adjustAdminCounter(amount) {
+            globalCurrentServing += amount;
+            if(globalCurrentServing < 1) globalCurrentServing = 1;
+            
+            document.getElementById('admin-serving-number').innerText = globalCurrentServing;
+            if(myTicketNumber) syncUIElements();
+        }
+
+        function captureCurrentLocationAsAnchor() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    document.getElementById('cfg-lat').value = position.coords.latitude.toFixed(4);
+                    document.getElementById('cfg-lon').value = position.coords.longitude.toFixed(4);
+                });
+            }
         }
     </script>
 </body>
