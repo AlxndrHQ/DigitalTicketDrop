@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue - Spot Holder</title>
+    <!-- Tailwind CSS for clean styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome for clean Google-style icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
+
+    <!-- Top Navigation Bar (Google Style) -->
+    <header class="flex justify-between items-center p-4 text-sm text-[#5f6368]">
+        <div class="flex items-center space-space-x-2">
+            <span class="font-medium text-gray-900">Store Queue System</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="#" class="hover:underline">Help</a>
+            <i class="fa-solid fa-bars text-lg cursor-pointer text-[#5f6368]"></i>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col items-center justify-center px-4 -mt-16">
+        
+        <!-- Minimalist Logo Area -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">
+                <span class="text-[#4285F4]">Q</span><span class="text-[#EA4335]">u</span><span class="text-[#FBBC05]">e</span><span class="text-[#4285F4]">u</span><span class="text-[#34A853]">e</span><span class="text-[#EA4335]">.</span>
+            </h1>
+            <p class="text-xs text-[#5f6368] mt-2 uppercase tracking-widest font-mono">Secure Drop Access</p>
+        </div>
+
+        <!-- Step 1: Join the Line (Initial View) -->
+        <div id="join-card" class="w-full max-w-md bg-white rounded-2xl border border-[#dadce0] p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <p class="text-center text-sm text-[#5f6368] mb-6">Verify your location to secure your digital placeholder number.</p>
+            
+            <div class="space-y-4">
+                <button onclick="getDigitalTicket()" class="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white font-medium py-3 px-4 rounded-lg transition duration-150 flex items-center justify-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span>Scan & Check In</span>
+                </button>
+                
+                <p id="geo-status" class="text-center text-xs text-[#5f6368] font-mono"></p>
+            </div>
+        </div>
+
+        <!-- Step 2: Active Ticket View (Google Card Style) -->
+        <div id="ticket-card" class="w-full max-w-md bg-white rounded-2xl border border-[#dadce0] p-8 shadow-sm hidden">
+            <div class="text-center border-b border-gray-100 pb-6">
+                <span class="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Spot Secured</span>
+                <h2 class="text-xs text-[#5f6368] uppercase tracking-wider mt-4">Your Position Number</h2>
+                <div id="user-number" class="text-7xl font-bold text-[#1a73e8] my-2">--</div>
+                <p class="text-xs text-[#70757a]" id="timestamp-display"></p>
+            </div>
+
+            <!-- Dynamic Live Status Grid -->
+            <div class="grid grid-cols-2 gap-4 my-6 text-center">
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span class="text-xs text-[#5f6368] block">Now Serving</span>
+                    <span id="now-serving" class="text-3xl font-bold text-[#ea4335]">1</span>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span class="text-xs text-[#5f6368] block">People Ahead</span>
+                    <span id="people-ahead" class="text-3xl font-bold text-[#fbbc05]">--</span>
+                </div>
+            </div>
+
+            <!-- Live Alert Box -->
+            <div id="alert-banner" class="bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3">
+                <i id="alert-icon" class="fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base"></i>
+                <div>
+                    <p id="alert-text" class="font-medium text-[#202124]">You are safely in line. We will alert you when your turn approaches.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer (Google Style) -->
+    <footer class="bg-[#f2f2f2] border-t border-[#e4e4e4] text-xs text-[#70757a]">
+        <div class="px-6 py-3 border-b border-[#e4e4e4] flex items-center space-x-2">
+            <i class="fa-solid fa-building text-gray-400"></i>
+            <span class="font-medium text-gray-600">Verified Drop Location: Launch Site Alpha</span>
+        </div>
+        <div class="px-6 py-3 flex flex-wrap justify-between items-center gap-y-2">
+            <div class="flex space-x-6">
+                <a href="#" class="hover:underline">About</a>
+                <a href="#" class="hover:underline">Privacy</a>
+                <a href="#" class="hover:underline">Terms</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Frontend Queue Simulation Logic -->
+    <script>
+        // TARGET COORDINATES (Example: Store Front Door)
+        // Adjust these to the actual storefront coordinates later
+        const STORE_LAT = 38.9072; 
+        const STORE_LON = -77.0369;
+        const ALLOWED_RADIUS_MILES = 0.1; // roughly 500 feet
+
+        // Fake DB State for the Prototype
+        let myTicketNumber = null;
+        let currentLiveServing = 1;
+
+        function getDigitalTicket() {
+            const statusText = document.getElementById('geo-status');
+            statusText.innerText = "Verifying physical location...";
+
+            if (!navigator.geolocation) {
+                statusText.innerText = "Geolocation not supported by your browser.";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLon = position.coords.longitude;
+                    
+                    // In production, you would calculate the distance between user and store here
+                    // For prototyping purposes, we will pass them through to simulate success
+                    
+                    // Generate a random ticket number between 40 and 50 to simulate arriving early
+                    myTicketNumber = Math.floor(Math.random() * 10) + 42; 
+                    
+                    // Switch views instantly
+                    document.getElementById('join-card').classList.add('hidden');
+                    document.getElementById('ticket-card').classList.remove('hidden');
+                    
+                    document.getElementById('user-number').innerText = `#${myTicketNumber}`;
+                    
+                    const now = new Date();
+                    document.getElementById('timestamp-display').innerText = `Secured at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                    
+                    // Start live simulation tracker
+                    startLiveQueueSimulation();
+                },
+                (error) => {
+                    statusText.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-triangle-exclamation"></i> Location access denied. Cannot verify line placement.</span>`;
+                }
+            );
+        }
+
+        function startLiveQueueSimulation() {
+            const servingEl = document.getElementById('now-serving');
+            const aheadEl = document.getElementById('people-ahead');
+            const alertText = document.getElementById('alert-text');
+            const alertBanner = document.getElementById('alert-banner');
+            const alertIcon = document.getElementById('alert-icon');
+
+            // Set initial math
+            aheadEl.innerText = myTicketNumber - currentLiveServing;
+
+            // Simulate the line moving every few seconds
+            const interval = setInterval(() => {
+                if (currentLiveServing < myTicketNumber) {
+                    currentLiveServing++;
+                    servingEl.innerText = currentLiveServing;
+                    
+                    let remaining = myTicketNumber - currentLiveServing;
+                    aheadEl.innerText = remaining;
+
+                    // Dynamics Alert Logic
+                    if (remaining === 5) {
+                        alertText.innerText = "You are 5 numbers away! Please head to the store entrance now.";
+                        alertBanner.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                        alertIcon.className = "fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce";
+                    } else if (remaining === 0) {
+                        alertText.innerText = "Your number is active. Present this screen to the door staff for entry.";
+                        alertBanner.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3";
+                        alertIcon.className = "fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base";
+                        clearInterval(interval);
+                    }
+                }
+            }, 4000); // Increments every 4 seconds for simulation speed
+        }
+    </script>
+</body>
+</html>
