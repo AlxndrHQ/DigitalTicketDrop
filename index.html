@@ -375,6 +375,9 @@
                 <button onclick="runTestCase('clear')" class="safari-clickable w-full text-left text-xs bg-white border border-red-100 rounded-lg px-3 py-2 hover:bg-red-50 transition font-medium text-red-600">
                     <i class="fa-solid fa-rotate-left mr-1 text-red-400"></i>Reset all test state
                 </button>
+                <button onclick="runTestCase('admin_setup')" class="safari-clickable w-full text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 transition font-medium text-slate-600">
+                    <i class="fa-solid fa-key mr-1 text-slate-400"></i>Test 4 — Show admin TOTP setup instructions
+                </button>
             </div>
             <div id="test-output" class="hidden mt-3 bg-gray-900 rounded-lg p-3 text-xs font-mono text-green-400 whitespace-pre-wrap max-h-52 overflow-y-auto"></div>
         </div>
@@ -408,11 +411,15 @@
 
 
 <!-- ══ TOTP SETUP MODAL ══ -->
-<div id="totp-setup-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+<div id="totp-setup-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
+     onclick="if(event.target===this)closeTOTPSetupModal()">
     <div class="modal-card">
-        <div class="flex items-center gap-2 mb-1">
-            <div class="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center"><i class="fa-solid fa-shield-halved text-[#1a73e8] text-sm"></i></div>
-            <h3 class="font-bold text-gray-900 text-base">Set Up Your Authenticator</h3>
+        <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center"><i class="fa-solid fa-shield-halved text-[#1a73e8] text-sm"></i></div>
+                <h3 class="font-bold text-gray-900 text-base">Set Up Your Authenticator</h3>
+            </div>
+            <button onclick="closeTOTPSetupModal()" class="safari-clickable text-gray-400 hover:text-gray-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
         </div>
         <p class="text-xs text-[#5f6368] mb-3">One-time setup. Open <strong>Google Authenticator</strong> (or Authy / Apple Passwords) and scan this QR code to secure your ticket.</p>
         <div class="totp-setup-qr" id="totp-setup-qr-container"></div>
@@ -725,6 +732,9 @@ function generateTicket() {
 // ════════════════════════════════════════════════════════════════
 // TOTP SETUP MODAL
 // ════════════════════════════════════════════════════════════════
+function closeTOTPSetupModal() {
+    document.getElementById('totp-setup-modal').classList.add('hidden');
+}
 function openTOTPSetupModal() {
     const container = document.getElementById('totp-setup-qr-container');
     container.innerHTML = '';
@@ -845,7 +855,13 @@ function requestStaffOverride() {
 const STAFF_SECRET      = 'JBSWY3DPEHPK3PXP';
 const STAFF_CIRCUMFERENCE = 2 * Math.PI * 34;
 
+// Snapshot which view was active before entering staff mode so we can restore it on exit.
+// Without this, _adminViewOpen and the actual DOM diverge after exitStaffView(), which
+// causes the Admin Portal button to read the wrong state and get stuck.
+let _preStaffViewWasAdmin = false;
+
 function enterStaffView() {
+    _preStaffViewWasAdmin = _adminViewOpen;
     document.querySelector('header').style.display = 'none';
     document.querySelector('main').style.display   = 'none';
     document.querySelector('footer').style.display = 'none';
@@ -861,6 +877,8 @@ function exitStaffView() {
     document.getElementById('staff-view').classList.remove('active');
     window.location.hash = '';
     if (_staffPinInterval) { clearInterval(_staffPinInterval); _staffPinInterval = null; }
+    // Restore whichever view was showing before staff mode
+    _setAdminView(_preStaffViewWasAdmin);
 }
 
 async function _startStaffPinClock() {
@@ -1152,29 +1170,165 @@ async function proposeSwap() {
 // ════════════════════════════════════════════════════════════════
 // ADMIN & UTILITIES
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// ADMIN AUTH GATE
+// ════════════════════════════════════════════════════════════════
+// Explicit view-state flag — never sniff classList to decide direction.
+// This was the root cause of the "can't reopen admin" bug: classList
+// could get out of sync with reality after test-case resets.
+let _adminViewOpen   = false;
+let _adminAuthed     = false;   // survives for the tab session once passed
+let _adminAuthFailed = 0;       // consecutive wrong codes this session
+
+// Demo admin TOTP secret. In production: provisioned per-event in Supabase,
+// shared with staff via a secure internal channel only.
+const ADMIN_SECRET = 'MFRGGZDFMZTWQ2LK';
+
 function toggleAdminMode() {
-    const cust=document.getElementById('customer-view'),adm=document.getElementById('admin-view'),nav=document.getElementById('nav-title');
-    if(adm.classList.contains('hidden')){
-        if(CONFIG.EVENT_LAUNCH_TIME){
-            const pad=n=>String(n).padStart(2,'0'),d=CONFIG.EVENT_LAUNCH_TIME;
-            document.getElementById('cfg-launch-time').value=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            document.getElementById('cfg-launch-preview-text').innerText=`Drop set for ${d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'})} at ${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
-            document.getElementById('cfg-launch-preview').classList.remove('hidden');
-        }
-        const ls=document.getElementById('cfg-lockout-mins');
-        if(ls)ls.value=CONFIG.TRANSFER_LOCKOUT_MINS;
-        renderFlaggedPanel();
-        cust.classList.add('hidden');adm.classList.remove('hidden');nav.innerText='Queue Admin Panel';
+    if (_adminViewOpen) {
+        _saveAdminSettings();
+        _setAdminView(false);
     } else {
-        CONFIG.STORE_LAT=parseFloat(document.getElementById('cfg-lat').value);
-        CONFIG.STORE_LON=parseFloat(document.getElementById('cfg-lon').value);
-        CONFIG.ALLOWED_RADIUS_MILES=parseFloat(document.getElementById('cfg-radius').value);
-        const lv=document.getElementById('cfg-launch-time').value;
-        CONFIG.EVENT_LAUNCH_TIME=lv?new Date(lv):null;
-        CONFIG.TRANSFER_LOCKOUT_MINS=parseInt(document.getElementById('cfg-lockout-mins').value,10);
-        adm.classList.add('hidden');cust.classList.remove('hidden');nav.innerText='Store Queue System';
-        updateLocationStatusFooter();
-        if(myTicketNumber){_clearWaitCountdown();if(_preLaunchInterval){clearInterval(_preLaunchInterval);_preLaunchInterval=null;}syncUIElements();syncTransferLockState();}
+        // Require staff auth before opening — once authed per session, skip modal
+        _adminAuthed ? _openAdminPanel() : _openAdminAuthModal();
+    }
+}
+
+function _setAdminView(open) {
+    _adminViewOpen = open;
+    const cust = document.getElementById('customer-view');
+    const adm  = document.getElementById('admin-view');
+    const nav  = document.getElementById('nav-title');
+    if (open) {
+        cust.classList.add('hidden');
+        adm.classList.remove('hidden');
+        nav.innerText = 'Queue Admin Panel';
+    } else {
+        adm.classList.add('hidden');
+        cust.classList.remove('hidden');
+        nav.innerText = 'Store Queue System';
+    }
+}
+
+function _openAdminPanel() {
+    if (CONFIG.EVENT_LAUNCH_TIME) {
+        const pad = n => String(n).padStart(2,'0'), d = CONFIG.EVENT_LAUNCH_TIME;
+        document.getElementById('cfg-launch-time').value =
+            `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        document.getElementById('cfg-launch-preview-text').innerText =
+            `Drop set for ${d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'})} at ${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
+        document.getElementById('cfg-launch-preview').classList.remove('hidden');
+    }
+    const ls = document.getElementById('cfg-lockout-mins');
+    if (ls) ls.value = CONFIG.TRANSFER_LOCKOUT_MINS;
+    renderFlaggedPanel();
+    _setAdminView(true);
+}
+
+function _saveAdminSettings() {
+    CONFIG.STORE_LAT            = parseFloat(document.getElementById('cfg-lat').value);
+    CONFIG.STORE_LON            = parseFloat(document.getElementById('cfg-lon').value);
+    CONFIG.ALLOWED_RADIUS_MILES = parseFloat(document.getElementById('cfg-radius').value);
+    const lv = document.getElementById('cfg-launch-time').value;
+    CONFIG.EVENT_LAUNCH_TIME    = lv ? new Date(lv) : null;
+    CONFIG.TRANSFER_LOCKOUT_MINS = parseInt(document.getElementById('cfg-lockout-mins').value, 10);
+    updateLocationStatusFooter();
+    if (myTicketNumber) {
+        _clearWaitCountdown();
+        if (_preLaunchInterval) { clearInterval(_preLaunchInterval); _preLaunchInterval = null; }
+        syncUIElements();
+        syncTransferLockState();
+    }
+}
+
+function _openAdminAuthModal() {
+    // Render the admin setup QR every time the modal opens (idempotent)
+    _renderAdminSetupQR();
+    document.getElementById('admin-auth-input').value = '';
+    document.getElementById('admin-auth-input').className = 'totp-pin-input';
+    document.getElementById('admin-auth-input').disabled  = (_adminAuthFailed >= 5);
+    document.getElementById('admin-auth-error').classList.add('hidden');
+    document.getElementById('admin-auth-lockout').classList.add('hidden');
+    // First-time users land on Setup tab; returning staff land on Verify tab
+    switchAdminTab(_adminAuthed ? 'verify' : 'setup');
+    document.getElementById('admin-auth-modal').classList.remove('hidden');
+}
+function _closeAdminAuthModal() {
+    document.getElementById('admin-auth-modal').classList.add('hidden');
+}
+
+/**
+ * switchAdminTab(tab)
+ * Toggles between the 'setup' QR pane and the 'verify' code-entry pane.
+ */
+function switchAdminTab(tab) {
+    const setupPane  = document.getElementById('admin-tab-setup');
+    const verifyPane = document.getElementById('admin-tab-verify');
+    const setupBtn   = document.getElementById('admin-tab-setup-btn');
+    const verifyBtn  = document.getElementById('admin-tab-verify-btn');
+    if (tab === 'setup') {
+        setupPane.classList.remove('hidden');  verifyPane.classList.add('hidden');
+        setupBtn.className  = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition bg-white text-slate-800 shadow-sm';
+        verifyBtn.className = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition text-gray-400';
+    } else {
+        verifyPane.classList.remove('hidden'); setupPane.classList.add('hidden');
+        verifyBtn.className = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition bg-white text-slate-800 shadow-sm';
+        setupBtn.className  = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition text-gray-400';
+        setTimeout(() => document.getElementById('admin-auth-input').focus(), 100);
+    }
+}
+
+/**
+ * _renderAdminSetupQR()
+ * Builds the otpauth:// URI for the admin secret and renders it as a
+ * scannable QR code inside the Setup tab. Called each time the modal opens.
+ */
+function _renderAdminSetupQR() {
+    const container = document.getElementById('admin-setup-qr');
+    if (!container) return;
+    container.innerHTML = '';
+    const uri = `otpauth://totp/${encodeURIComponent('QueueDrop Admin')}?secret=${ADMIN_SECRET}&issuer=${encodeURIComponent('QueueDrop')}&algorithm=SHA1&digits=6&period=30`;
+    new QRCode(container, {
+        text: uri, width: 160, height: 160,
+        colorDark: '#0f172a', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+    });
+    // Display grouped secret for manual entry fallback
+    const dispEl = document.getElementById('admin-secret-display');
+    if (dispEl) dispEl.innerText = ADMIN_SECRET.match(/.{1,4}/g).join(' ');
+}
+
+function onAdminPinInput(input) {
+    if (input.value.length === 6) submitAdminAuth();
+}
+async function submitAdminAuth() {
+    if (_adminAuthFailed >= 5) return;
+    const input  = document.getElementById('admin-auth-input').value.trim();
+    const pinEl  = document.getElementById('admin-auth-input');
+    const errEl  = document.getElementById('admin-auth-error');
+    const lockEl = document.getElementById('admin-auth-lockout');
+
+    const valid = await verifyTOTP(ADMIN_SECRET, input);
+    if (valid) {
+        _adminAuthed     = true;
+        _adminAuthFailed = 0;
+        pinEl.className  = 'totp-pin-input success';
+        errEl.classList.add('hidden');
+        setTimeout(() => { _closeAdminAuthModal(); _openAdminPanel(); }, 400);
+    } else {
+        _adminAuthFailed++;
+        pinEl.value = ''; pinEl.className = 'totp-pin-input error';
+        setTimeout(() => { pinEl.className = 'totp-pin-input'; }, 900);
+        if (_adminAuthFailed >= 5) {
+            pinEl.disabled = true;
+            errEl.classList.add('hidden');
+            lockEl.classList.remove('hidden');
+            console.warn('[AdminAuth] 5 failed attempts — session locked.');
+        } else {
+            const rem = 5 - _adminAuthFailed;
+            errEl.innerText = `Incorrect code. ${rem} attempt${rem!==1?'s':''} remaining.`;
+            errEl.classList.remove('hidden');
+        }
     }
 }
 
@@ -1275,6 +1429,26 @@ async function runTestCase(type) {
         log('→ Open Admin Portal to see the flag. Open Staff Terminal to see override log. ✓','#a78bfa');
     }
 
+    if(type==='admin_setup'){
+        output.innerHTML='';
+        log('═══ ADMIN PORTAL SETUP (Staff Onboarding) ═══\n','#a78bfa');
+        log('The Admin Portal requires Google Authenticator, just like gate MFA.\n');
+        log('Step 1 — Open Google Authenticator on your staff device.');
+        log('Step 2 — Tap "+" → "Enter a setup key" and enter:');
+        log('\n  Account name : QueueDrop Admin');
+        log('  Your key     : MFRG GZDF MZTW Q2LK');
+        log('  Type         : Time based\n','#fbbf24');
+        log('Step 3 — Tap "Add". The entry appears as "QueueDrop Admin".');
+        log('Step 4 — Return here and tap "Admin Portal".');
+        log('Step 5 — Enter the current 6-digit code shown in the app.\n');
+        log('Once verified, the session stays open for this browser tab.');
+        log('Closing and reopening the tab requires re-authentication.\n');
+        log('Production note: In a real deployment the ADMIN_SECRET is','#94a3b8');
+        log('provisioned per-event in Supabase and delivered to staff','#94a3b8');
+        log('via a secure internal channel — never hardcoded like this demo.','#94a3b8');
+        return;
+    }
+
     if(type==='transfer_seed'){
         output.innerHTML='';
         log('═══ TEST 3: Transfer → TOTP Seed Re-Issuance ═══\n','#a78bfa');
@@ -1302,5 +1476,77 @@ async function runTestCase(type) {
     }
 }
 </script>
+
+<!-- ══ ADMIN AUTH MODAL ══ -->
+<div id="admin-auth-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width:380px;">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-lock text-slate-600 text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-900 text-base leading-tight">Staff Access</h3>
+                    <p class="text-[10px] text-gray-400 font-mono">Admin Portal · Authenticated Zone</p>
+                </div>
+            </div>
+            <button onclick="_closeAdminAuthModal()" class="safari-clickable text-gray-400 hover:text-gray-600 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Tab switcher -->
+        <div class="flex bg-gray-100 rounded-xl p-1 mb-4 gap-1">
+            <button id="admin-tab-setup-btn" onclick="switchAdminTab('setup')"
+                class="safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition bg-white text-slate-800 shadow-sm">
+                <i class="fa-solid fa-qrcode mr-1"></i>First-time Setup
+            </button>
+            <button id="admin-tab-verify-btn" onclick="switchAdminTab('verify')"
+                class="safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition text-gray-400">
+                <i class="fa-solid fa-shield-halved mr-1"></i>Enter Code
+            </button>
+        </div>
+
+        <!-- ── SETUP TAB ── -->
+        <div id="admin-tab-setup">
+            <p class="text-xs text-[#5f6368] mb-3">Scan this QR code into <strong>Google Authenticator</strong>, Authy, or Apple Passwords to add the <em>QueueDrop Admin</em> entry. Do this once per device.</p>
+            <div id="admin-setup-qr" style="display:flex;justify-content:center;margin-bottom:12px;"></div>
+            <p class="text-xs text-gray-500 text-center mb-1">Can't scan? Enter this key manually:</p>
+            <div class="totp-secret-display mb-3" id="admin-secret-display">----</div>
+            <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4 flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xs mt-0.5"></i>
+                <p class="text-[11px] text-amber-700">Keep this key confidential. Do not share it with customers or post it publicly. Treat it like a password.</p>
+            </div>
+            <button onclick="switchAdminTab('verify')"
+                class="safari-clickable w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold py-2.5 rounded-xl transition shadow-sm">
+                I've added it — Enter My Code <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+
+        <!-- ── VERIFY TAB ── -->
+        <div id="admin-tab-verify" class="hidden">
+            <p class="text-xs text-[#5f6368] mb-3">Open <strong>Google Authenticator</strong> and enter the current 6-digit code for <em>QueueDrop Admin</em>.</p>
+            <input type="number" id="admin-auth-input" maxlength="6" placeholder="000000"
+                class="totp-pin-input" style="font-size:26px;letter-spacing:.25em;"
+                oninput="onAdminPinInput(this)">
+            <p class="text-[10px] text-rose-600 mt-2 text-center hidden" id="admin-auth-error">Incorrect code. Try again.</p>
+            <p class="text-[10px] text-amber-600 mt-2 text-center hidden" id="admin-auth-lockout">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>Too many failed attempts. Reload the page to try again.
+            </p>
+            <div class="flex gap-3 mt-4">
+                <button onclick="switchAdminTab('setup')" class="safari-clickable flex-1 border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm font-medium py-2.5 rounded-lg transition">
+                    <i class="fa-solid fa-arrow-left mr-1"></i>Setup
+                </button>
+                <button onclick="submitAdminAuth()" class="safari-clickable flex-1 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold py-2.5 rounded-xl transition shadow-sm">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>Verify &amp; Enter
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 </body>
 </html>
