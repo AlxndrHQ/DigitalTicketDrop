@@ -1187,7 +1187,7 @@ function captureCurrentLocationAsAnchor(){if(navigator.geolocation)navigator.geo
 function toggleMenuDemo(){alert('Navigation menu — system fully operational.');}
 function updateLocationStatusFooter(){document.getElementById('footer-location-text').innerText=`Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;}
 function isEventLive(){return !CONFIG.EVENT_LAUNCH_TIME||Date.now()>=CONFIG.EVENT_LAUNCH_TIME.getTime();}
-function formatDuration(m){if(m<60)return`~${m} min${m!==1?'s':''}`;const h=Math.floor(m/60),r=m%60;return`~${h} hr${h!==1?'s':''}${r>0?` ${r} min${r!==1?'s':''}`:'`}`;}
+function formatDuration(m){if(m<60)return`~${m} min${m!==1?'s':''}`;const h=Math.floor(m/60),r=m%60;return`~${h} hr${h!==1?'s':''}${r>0?` ${r} min${r!==1?'s':''}`:''}`; }
 function formatEstimatedTurnTime(m){const b=isEventLive()?Date.now():CONFIG.EVENT_LAUNCH_TIME.getTime();return`Est. ready at ${new Date(b+m*60000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;}
 function pad2(n){return String(n).padStart(2,'0');}
 function _nowStr(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
