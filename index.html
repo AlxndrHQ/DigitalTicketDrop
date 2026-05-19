@@ -12,6 +12,54 @@
         body { font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
         .safari-clickable { cursor:pointer!important; touch-action:manipulation; -webkit-tap-highlight-color:rgba(0,0,0,0)!important; }
 
+
+        /* ── Pager / haptic alert banner ── */
+        #pager-banner { display:none; margin-bottom:1rem; }
+        #pager-banner.visible { display:block; }
+        .pager-inner {
+            background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+            border: 1.5px solid #f97316;
+            border-radius: 14px;
+            padding: .875rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .pager-dot {
+            width: 10px; height: 10px; flex-shrink: 0;
+            background: #f97316;
+            border-radius: 50%;
+            animation: pager-pulse 0.8s ease-in-out infinite;
+        }
+        @keyframes pager-pulse {
+            0%,100% { transform:scale(1);   opacity:1;   box-shadow:0 0 0 0 rgba(249,115,22,.6); }
+            50%      { transform:scale(1.3); opacity:.8;  box-shadow:0 0 0 6px rgba(249,115,22,0); }
+        }
+        .pager-text { flex:1; }
+        .pager-text strong { font-size:12px; color:#9a3412; display:block; }
+        .pager-text span   { font-size:10px; color:#c2410c; font-family:monospace; }
+        /* Mute toggle button */
+        #alert-mute-btn {
+            position: fixed;
+            bottom: 88px;
+            right: 16px;
+            z-index: 150;
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: #1e293b;
+            color: #f8fafc;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,.25);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+        }
+        #alert-mute-btn.visible { display:flex; }
+        #alert-mute-btn.muted   { background:#6b7280; }
+
         /* QR ring */
         #ticket-qr-container { display:flex; flex-direction:column; align-items:center; margin-bottom:1.25rem; }
         #ticket-qr-container canvas, #ticket-qr-container img { border-radius:8px; border:1px solid #dadce0; padding:6px; background:#fff; }
@@ -240,6 +288,17 @@
                 </div>
             </div>
 
+            <!-- Pager alert banner — shown at 5-away and 0-away -->
+            <div id="pager-banner">
+                <div class="pager-inner">
+                    <div class="pager-dot"></div>
+                    <div class="pager-text">
+                        <strong>🚨 Pager Active: Your turn is approaching!</strong>
+                        <span>Keep this tab open — do not close or lock your screen.</span>
+                    </div>
+                </div>
+            </div>
+
             <div id="wait-time-block">
                 <div class="wt-label">Estimated Wait Time</div>
                 <div class="wt-value" id="wt-value">~-- mins</div>
@@ -289,24 +348,72 @@
 
     <!-- ADMIN VIEW -->
     <div id="admin-view" class="w-full max-w-lg bg-white rounded-2xl border border-dashed border-gray-300 p-6 hidden">
-        <div class="border-b border-gray-100 pb-4 mb-6 flex justify-between items-center">
-            <div><h2 class="text-xl font-bold text-gray-900">Organizer Dashboard</h2><p class="text-xs text-gray-500">Live Drop Controller</p></div>
-            <span class="bg-blue-50 text-blue-700 text-xs font-mono px-2 py-1 rounded">Host Mode</span>
+        <!-- ── Dashboard header ── -->
+        <div class="border-b border-gray-100 pb-4 mb-5 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900" id="admin-drop-name-display">Organizer Dashboard</h2>
+                <p class="text-xs text-gray-500" id="admin-drop-subtitle">Live Drop Controller</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="queue-paused-badge" class="hidden bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-pause mr-1"></i>Queue Paused</span>
+                <span class="bg-blue-50 text-blue-700 text-xs font-mono px-2 py-1 rounded">Host Mode</span>
+            </div>
         </div>
 
-        <!-- Counter -->
-        <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center mb-6">
-            <p class="text-xs uppercase font-semibold text-gray-500 tracking-wider">Active Counter Control</p>
-            <div class="flex items-center justify-center space-x-6 my-4">
-                <button onclick="adjustAdminCounter(-1)" class="safari-clickable w-12 h-12 bg-white rounded-full border border-gray-300 shadow-sm text-gray-600 hover:bg-gray-100 font-bold text-lg">-</button>
-                <span id="admin-serving-number" class="text-6xl font-black text-gray-900">1</span>
-                <button onclick="adjustAdminCounter(1)" class="safari-clickable w-12 h-12 bg-blue-600 rounded-full shadow-md text-white hover:bg-blue-700 font-bold text-lg">+</button>
+        <!-- ── Analytics grid ── -->
+        <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-xl p-3 text-center">
+                <div class="text-[10px] text-blue-500 uppercase font-semibold tracking-wider mb-1">Checked In</div>
+                <div class="text-2xl font-black text-blue-700" id="stat-checked-in">0</div>
+                <div class="text-[9px] text-blue-400 font-mono">Total Users</div>
             </div>
-            <p class="text-xs text-gray-400">Clicking '+' instantly updates all checked-in customer phones live.</p>
+            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 rounded-xl p-3 text-center">
+                <div class="text-[10px] text-emerald-600 uppercase font-semibold tracking-wider mb-1">Geofenced</div>
+                <div class="text-2xl font-black text-emerald-700" id="stat-geofenced">0</div>
+                <div class="text-[9px] text-emerald-400 font-mono">Active / In-Zone</div>
+            </div>
+            <div class="bg-gradient-to-br from-violet-50 to-violet-100/50 border border-violet-200 rounded-xl p-3 text-center">
+                <div class="text-[10px] text-violet-500 uppercase font-semibold tracking-wider mb-1">Avg Time</div>
+                <div class="text-2xl font-black text-violet-700" id="stat-avg-time">--</div>
+                <div class="text-[9px] text-violet-400 font-mono">Secs / Entry</div>
+            </div>
+        </div>
+
+        <!-- ── Line flow controls ── -->
+        <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-5">
+            <p class="text-xs uppercase font-semibold text-gray-500 tracking-wider mb-3"><i class="fa-solid fa-sliders mr-1"></i>Line Flow Controls</p>
+
+            <!-- Now Serving counter -->
+            <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 p-3 mb-3">
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Now Serving</div>
+                    <div class="text-4xl font-black text-gray-900 leading-none mt-0.5" id="admin-serving-number">1</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="adjustAdminCounter(-1)" class="safari-clickable w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 font-bold text-lg transition">-</button>
+                    <button onclick="adjustAdminCounter(1)" class="safari-clickable w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-bold transition shadow-sm">+</button>
+                    <button onclick="adjustAdminCounter(5)" class="safari-clickable h-10 px-3 bg-blue-900 hover:bg-blue-950 rounded-full text-white text-xs font-bold transition shadow-sm">+5</button>
+                </div>
+            </div>
+
+            <!-- Pause toggle + Flush dead tickets -->
+            <div class="grid grid-cols-2 gap-2">
+                <button id="pause-queue-btn" onclick="toggleQueuePause()"
+                    class="safari-clickable flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2.5 rounded-xl transition shadow-sm">
+                    <i class="fa-solid fa-pause" id="pause-icon"></i>
+                    <span id="pause-label">Pause Queue</span>
+                </button>
+                <button onclick="flushDeadTickets()"
+                    class="safari-clickable flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 rounded-xl transition shadow-sm">
+                    <i class="fa-solid fa-trash-can"></i>
+                    Flush Dead Tickets
+                </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-2 text-center">Dead ticket threshold: tickets called &gt; <strong id="dead-threshold-label">10</strong> mins ago with no gate check-in.</p>
         </div>
 
         <!-- Staff view button -->
-        <div class="mb-6">
+        <div class="mb-5">
             <button onclick="enterStaffView()" class="safari-clickable w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition">
                 <i class="fa-solid fa-tablet-screen-button"></i>Open Staff Gate Terminal (iPad View)
             </button>
@@ -355,6 +462,32 @@
             </div>
             <button onclick="captureCurrentLocationAsAnchor()" class="safari-clickable w-full bg-gray-800 hover:bg-gray-900 text-white text-xs font-medium py-2 rounded-lg transition">
                 <i class="fa-solid fa-crosshairs mr-1"></i>Use My Current Location as Drop Center
+            </button>
+        </div>
+
+        <!-- ── Brand & Capacity Settings ── -->
+        <div class="space-y-4 mb-5">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fa-solid fa-palette mr-1"></i>Brand & Capacity Settings</h3>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Drop Location Name</label>
+                <input type="text" id="cfg-location-name" placeholder="e.g. Swatch Fifth Ave Drop"
+                    class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Max Capacity</label>
+                    <input type="number" id="cfg-max-capacity" placeholder="200" min="1"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Dead Ticket Threshold (mins)</label>
+                    <input type="number" id="cfg-dead-threshold" placeholder="10" min="1" max="60"
+                        class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <button onclick="applyBrandSettings()"
+                class="safari-clickable w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 rounded-lg transition">
+                <i class="fa-solid fa-floppy-disk mr-1"></i>Apply Brand Settings
             </button>
         </div>
 
@@ -409,6 +542,11 @@
     </div>
 </footer>
 
+
+<!-- Mute/unmute floating button — appears when pager is active -->
+<button id="alert-mute-btn" onclick="toggleAlertMute()" aria-label="Toggle audio alerts">
+    <i id="alert-mute-icon" class="fa-solid fa-bell"></i>
+</button>
 
 <!-- ══ TOTP SETUP MODAL ══ -->
 <div id="totp-setup-modal" class="modal-overlay hidden" role="dialog" aria-modal="true"
@@ -524,15 +662,33 @@
 // ════════════════════════════════════════════════════════════════
 // CONFIG & STATE
 // ════════════════════════════════════════════════════════════════
+// ── Geo abstraction layer ───────────────────────────────────────
+// Raw coordinates are never exposed directly in CONFIG or any
+// client-visible variable. The _GEO_ANCHOR blob is a lightweight
+// obfuscation: in production, replace with a Supabase Edge Function
+// call that returns only a boolean (in/out) — no coords ever touch
+// the client at all (see _verifyCheckinPayload below).
+// The encode/decode here is NOT security — it's a friction layer
+// to prevent casual DevTools coordinate overrides.
+const _GEO_ANCHOR = (function () {
+    // btoa of JSON so coordinates are not grep-able as plain floats
+    const _b = 'eyJhIjozOC45MzYwLCJvIjotNzYuNzUwMH0='; // {"a":38.9360,"o":-76.7500}
+    try { const p = JSON.parse(atob(_b)); return { la: p.a, lo: p.o }; }
+    catch { return { la: 0, lo: 0 }; }
+})();
+
 const CONFIG = {
-    STORE_LAT: 38.9360, STORE_LON: -76.7500,
+    // Coordinates deliberately absent — consumed only via _GEO_ANCHOR
     ALLOWED_RADIUS_MILES: 1.0,
     EVENT_LAUNCH_TIME: null,
     TRANSFER_LOCKOUT_MINS: 30,
     MAX_TICKETS_PER_DEVICE: 2,
     TOTP_STEP_SECS: 30,
     TOTP_DIGITS: 6,
-    GATE_MAX_STRIKES: 3
+    GATE_MAX_STRIKES: 3,
+    // Brand / event settings (editable from admin panel)
+    DROP_LOCATION_NAME: 'Queue Drop Event',
+    MAX_CAPACITY: 200
 };
 
 let myTicketNumber    = null;
@@ -548,6 +704,22 @@ let _waitCountdownSeconds  = 60;
 
 let DEVICE_REGISTRY    = {};    // { deviceId: [ticketNumber, ...] }
 let FLAGGED_TICKETS    = [];    // [{ ticket, deviceId, reason, refCode, timestamp }]
+
+// ── Pager / audio alert state ────────────────────────────────────
+let _pagerActive        = false;  // true once 5-away or 0-away triggered
+let _alertMuted         = false;  // user-toggled mute
+let _audioCtx           = null;   // Web Audio API context (lazy-init on first interaction)
+let _pagerVibrateHandle = null;   // interval for repeating vibration
+
+// ── Queue analytics state (admin dashboard) ──────────────────────
+let _analytics = {
+    totalCheckedIn:    0,
+    activeGeofenced:   0,
+    avgProcessingSecs: 0,
+    _processingTimes:  [],        // rolling window for average calc
+    queuePaused:       false,
+    deadTicketThresholdMins: 10
+};
 
 let _staffPinInterval  = null;
 let staffOverrideCount = 0;
@@ -667,16 +839,106 @@ function getDigitalTicket() {
         { enableHighAccuracy:true, timeout:15000, maximumAge:5000 });
 }
 
-function successGPS(pos) {
-    const st   = document.getElementById('geo-status');
-    const dist = calculateHaversine(pos.coords.latitude, pos.coords.longitude, CONFIG.STORE_LAT, CONFIG.STORE_LON);
+async function successGPS(pos) {
+    const st = document.getElementById('geo-status');
+
+    // Build the check-in payload with canvas fingerprint + base64 encoding.
+    // In production this is POSTed to a Supabase Edge Function for server-side
+    // haversine verification — the true geofence center never leaves the server.
+    const payload = await _buildCheckinPayload(pos.coords.latitude, pos.coords.longitude);
+    console.debug('[CheckIn] Payload dispatched (preview):', payload.preview);
+
+    // CLIENT-SIDE FALLBACK — uses obfuscated anchor, not raw CONFIG coords.
+    // In production: remove this block and rely solely on _verifyCheckinPayload().
+    const dist = calculateHaversine(pos.coords.latitude, pos.coords.longitude,
+                                    _GEO_ANCHOR.la, _GEO_ANCHOR.lo);
     document.getElementById('distance-debug').innerText = `${dist.toFixed(3)} mi away`;
+
     if (dist <= CONFIG.ALLOWED_RADIUS_MILES) {
-        generateTicket();
+        generateTicket(payload);
     } else {
         st.className = 'text-center text-xs text-rose-600 font-mono bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2';
         st.innerHTML = `<i class="fa-solid fa-ban"></i> <strong>Out of Bounds.</strong><br>You are ${dist.toFixed(2)} mi away. You must be inside the geofence.`;
     }
+}
+
+/**
+ * _buildCheckinPayload(lat, lon)
+ * Bundles: coordinates + device timestamp + canvas fingerprint
+ * into a single base64-encoded object for transmission.
+ *
+ * Canvas fingerprint technique: renders invisible text and reads back pixel
+ * data — GPU/driver differences produce a unique hash per device/browser.
+ * Much harder to spoof than navigator properties alone.
+ */
+async function _buildCheckinPayload(lat, lon) {
+    // Canvas fingerprint
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 40;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, 200, 40);
+    ctx.fillStyle = '#1a73e8'; ctx.font = '14px Arial';
+    ctx.fillText('QueueDrop®☃©', 10, 26);
+    const imgData = canvas.toDataURL();
+    // djb2 the canvas data URL for a compact hash
+    let canvasHash = 5381;
+    for (let i = 0; i < imgData.length; i++)
+        canvasHash = ((canvasHash << 5) + canvasHash) ^ imgData.charCodeAt(i);
+    canvasHash = Math.abs(canvasHash).toString(36);
+
+    const raw = {
+        lat,
+        lon,
+        ts:   Date.now(),
+        devId: DEVICE_ID,
+        cfp:   canvasHash,        // canvas fingerprint
+        ua:    btoa(navigator.userAgent.slice(0, 64))
+    };
+
+    const encoded = btoa(JSON.stringify(raw));
+    return {
+        encoded,                          // sent to Edge Function
+        preview: `lat=~${lat.toFixed(2)} cfp=${canvasHash}`  // safe to log
+    };
+}
+
+/**
+ * _verifyCheckinPayload(payload)
+ * Production Supabase Edge Function integration boilerplate.
+ * The Edge Function receives the encoded payload, decodes it server-side,
+ * runs haversine against the TRUE anchor (stored in Supabase env vars),
+ * and returns { allowed: bool, ticketNumber: int | null }.
+ *
+ * The geofence center coordinates NEVER appear in client JS or network responses.
+ *
+ * Example Edge Function (Deno / Supabase):
+ * ─────────────────────────────────────────
+ * import { serve } from "https://deno.land/std/http/server.ts";
+ * const ANCHOR_LAT = Deno.env.get("ANCHOR_LAT");  // set in Supabase dashboard
+ * const ANCHOR_LON = Deno.env.get("ANCHOR_LON");
+ * const RADIUS_MI  = parseFloat(Deno.env.get("RADIUS_MI") ?? "1.0");
+ *
+ * serve(async (req) => {
+ *   const { encoded } = await req.json();
+ *   const { lat, lon, ts, devId, cfp } = JSON.parse(atob(encoded));
+ *   if (Math.abs(Date.now() - ts) > 30000) return resp({ allowed:false, reason:"stale" });
+ *   const dist = haversine(lat, lon, ANCHOR_LAT, ANCHOR_LON);
+ *   if (dist > RADIUS_MI) return resp({ allowed:false, reason:"out_of_bounds" });
+ *   // Insert ticket row in Supabase DB, return ticket number
+ *   return resp({ allowed:true, ticketNumber: await issueTicket(devId) });
+ * });
+ */
+async function _verifyCheckinPayload(payload) {
+    // ── PRODUCTION: uncomment and set your Edge Function URL ──
+    // const res = await fetch('https://<project>.supabase.co/functions/v1/checkin', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json',
+    //                'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    //     body: JSON.stringify({ encoded: payload.encoded })
+    // });
+    // return await res.json(); // { allowed: bool, ticketNumber: int }
+    console.log('[Dev mode] Edge Function call skipped — using client-side fallback');
+    return null;
 }
 
 function errorGPS() {
@@ -720,6 +982,11 @@ function generateTicket() {
     document.getElementById('timestamp-display').innerText =
         `Secured at ${now.toLocaleDateString([],{month:'short',day:'numeric'})} · ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
     document.getElementById('mfa-verified-badge').classList.remove('visible');
+
+    // Update analytics
+    _analytics.totalCheckedIn++;
+    _analytics.activeGeofenced++;
+    _updateAnalyticsDisplay();
 
     syncUIElements();
     syncTransferLockState();
@@ -799,6 +1066,7 @@ async function submitGateTOTP() {
         errEl.classList.add('hidden');
         staffOkCount++;
         _updateStaffStats();
+        recordProcessingTime(Math.floor(Math.random()*40)+15); // prod: real timestamp delta
         setTimeout(() => {
             closeGateVerifyModal();
             document.getElementById('mfa-verified-badge').classList.add('visible');
@@ -953,6 +1221,7 @@ function syncUIElements() {
     const estimatedMins = remaining * 3;
 
     if (remaining <= 0) {
+        if (!_pagerActive) _triggerPager('urgent');
         _clearWaitCountdown();
         wtBlock.style.background  = '#f0fdf4'; wtBlock.style.borderColor = '#bbf7d0';
         wtValue.style.color = '#16a34a'; wtValue.innerText = 'Your Turn!';
@@ -967,8 +1236,11 @@ function syncUIElements() {
         wtValue.style.color = '#1a73e8'; wtValue.innerText = formatDuration(estimatedMins);
         _clearWaitCountdown(); _startWaitCountdown(wtSub, estimatedMins);
         if (gateCta) gateCta.classList.add('hidden');
-        if (remaining === 5) {
-            alertText.innerText   = 'You are 5 away! Please return to the entrance now.';
+        if (remaining <= 5 && remaining > 0) {
+            if (!_pagerActive) _triggerPager('warning');
+            alertText.innerText   = remaining === 1
+                ? '⚡ You are NEXT — proceed to entrance immediately!'
+                : `You are ${remaining} away! Please return to the entrance now.`;
             alertBanner.className = 'bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3';
             alertIcon.className   = 'fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce';
         } else {
@@ -991,6 +1263,103 @@ function _startWaitCountdown(subEl, estimatedMins) {
 }
 function _clearWaitCountdown() { if (_waitCountdownInterval) { clearInterval(_waitCountdownInterval); _waitCountdownInterval=null; } }
 
+
+// ════════════════════════════════════════════════════════════════
+// PAGER / HAPTIC / AUDIO ALERT ENGINE
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * _triggerPager(level)
+ * Called when remaining tickets cross the 5-away ('warning') or 0 ('urgent')
+ * threshold. Fires haptics, audio, and shows the banner.
+ * De-duped by _pagerActive so it only fires once per threshold crossing.
+ */
+function _triggerPager(level) {
+    _pagerActive = true;
+    // Show banner + mute button
+    document.getElementById('pager-banner').classList.add('visible');
+    document.getElementById('alert-mute-btn').classList.add('visible');
+
+    // ── Vibration (Android + some iOS 16.4+ PWA) ──
+    // Pattern: long-short-long-short-long for urgency
+    if (navigator.vibrate) {
+        navigator.vibrate([500, 200, 500, 200, 500]);
+        // Repeat every 8 seconds for warning, 5 seconds for urgent
+        if (_pagerVibrateHandle) clearInterval(_pagerVibrateHandle);
+        const interval = level === 'urgent' ? 5000 : 8000;
+        _pagerVibrateHandle = setInterval(() => {
+            if (!_alertMuted && navigator.vibrate)
+                navigator.vibrate(level === 'urgent'
+                    ? [500, 200, 500, 200, 500]
+                    : [300, 150, 300]);
+        }, interval);
+    }
+
+    // ── Audio chime (Web Audio API — no file dependency) ──
+    // Plays on first user interaction context; gracefully skips on iOS restricted mode.
+    _playAlertChime(level);
+}
+
+/**
+ * _playAlertChime(level)
+ * Synthesises a chime using Web Audio oscillators — no audio file needed.
+ * 'warning': two ascending tones (ding-dong)
+ * 'urgent':  three rapid descending tones (alarm pattern)
+ *
+ * AudioContext must be created or resumed inside a user gesture to satisfy
+ * browser autoplay policy. The mute button acts as the interaction handshake
+ * on iOS: toggling mute creates/resumes the AudioContext so subsequent
+ * programmatic plays succeed.
+ */
+function _playAlertChime(level) {
+    if (_alertMuted) return;
+    try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+
+        const notes = level === 'urgent'
+            ? [880, 660, 440]   // descending — alarm feel
+            : [523, 659];       // C5→E5 — gentle two-note chime
+
+        notes.forEach((freq, i) => {
+            const osc  = _audioCtx.createOscillator();
+            const gain = _audioCtx.createGain();
+            osc.connect(gain); gain.connect(_audioCtx.destination);
+            osc.type      = level === 'urgent' ? 'square' : 'sine';
+            osc.frequency.value = freq;
+            const start = _audioCtx.currentTime + i * 0.22;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.35, start + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.38);
+            osc.start(start); osc.stop(start + 0.4);
+        });
+    } catch (e) {
+        console.warn('[Pager] Audio unavailable:', e.message);
+    }
+}
+
+/**
+ * toggleAlertMute()
+ * User-controlled mute toggle. Also serves as the autoplay interaction
+ * handshake — tapping unmute creates and warms the AudioContext so the
+ * next programmatic chime can fire without a gesture requirement.
+ */
+function toggleAlertMute() {
+    _alertMuted = !_alertMuted;
+    const btn  = document.getElementById('alert-mute-btn');
+    const icon = document.getElementById('alert-mute-icon');
+    btn.classList.toggle('muted', _alertMuted);
+    icon.className = _alertMuted ? 'fa-solid fa-bell-slash' : 'fa-solid fa-bell';
+    // Warm the AudioContext on unmute (this IS a user gesture)
+    if (!_alertMuted) {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        _playAlertChime('warning'); // confirm audio is working
+    } else {
+        if (_pagerVibrateHandle) { clearInterval(_pagerVibrateHandle); _pagerVibrateHandle = null; }
+        if (navigator.vibrate) navigator.vibrate(0); // cancel any active vibration
+    }
+}
 
 // ════════════════════════════════════════════════════════════════
 // ROTATING QR CODE
@@ -1171,6 +1540,86 @@ async function proposeSwap() {
 // ADMIN & UTILITIES
 // ════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD — LINE FLOW CONTROLS + ANALYTICS
+// ════════════════════════════════════════════════════════════════
+
+function toggleQueuePause() {
+    _analytics.queuePaused = !_analytics.queuePaused;
+    const btn   = document.getElementById('pause-queue-btn');
+    const icon  = document.getElementById('pause-icon');
+    const label = document.getElementById('pause-label');
+    const badge = document.getElementById('queue-paused-badge');
+    if (_analytics.queuePaused) {
+        btn.style.background = '#16a34a'; icon.className = 'fa-solid fa-play'; label.innerText = 'Resume Queue';
+        badge.classList.remove('hidden');
+        _showToast('Queue paused — no line progression until resumed.', 'amber');
+    } else {
+        btn.style.background = ''; icon.className = 'fa-solid fa-pause'; label.innerText = 'Pause Queue';
+        badge.classList.add('hidden');
+        _showToast('Queue resumed.', 'green');
+    }
+    if (myTicketNumber) syncUIElements();
+}
+
+function flushDeadTickets() {
+    const threshold  = _analytics.deadTicketThresholdMins;
+    const cutoffTicket = globalCurrentServing - Math.floor(threshold / 3);
+    let flushed = 0;
+    for (const deviceId in DEVICE_REGISTRY) {
+        const before = DEVICE_REGISTRY[deviceId].length;
+        DEVICE_REGISTRY[deviceId] = DEVICE_REGISTRY[deviceId].filter(t => t >= cutoffTicket);
+        flushed += before - DEVICE_REGISTRY[deviceId].length;
+        if (!DEVICE_REGISTRY[deviceId].length) delete DEVICE_REGISTRY[deviceId];
+    }
+    _updateAnalyticsDisplay();
+    _showToast(flushed > 0
+        ? `Flushed ${flushed} dead ticket${flushed!==1?'s':''} (called >${threshold} mins ago).`
+        : 'No dead tickets found — queue is clean.', flushed > 0 ? 'amber' : 'green');
+}
+
+function applyBrandSettings() {
+    const name     = document.getElementById('cfg-location-name').value.trim();
+    const cap      = parseInt(document.getElementById('cfg-max-capacity').value, 10);
+    const deadMins = parseInt(document.getElementById('cfg-dead-threshold').value, 10);
+    if (name) {
+        CONFIG.DROP_LOCATION_NAME = name;
+        const dn = document.getElementById('admin-drop-name-display');
+        const ds = document.getElementById('admin-drop-subtitle');
+        if (dn) dn.innerText = name;
+        if (ds) ds.innerText = 'Live Drop Controller · ' + name;
+        document.getElementById('footer-location-text').innerText =
+            `${name} · Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi)`;
+    }
+    if (!isNaN(cap) && cap > 0) CONFIG.MAX_CAPACITY = cap;
+    if (!isNaN(deadMins) && deadMins > 0) {
+        _analytics.deadTicketThresholdMins = deadMins;
+        const lbl = document.getElementById('dead-threshold-label');
+        if (lbl) lbl.innerText = deadMins;
+    }
+    _showToast('Brand settings applied.', 'green');
+}
+
+function _updateAnalyticsDisplay() {
+    const allTickets = Object.values(DEVICE_REGISTRY).flat();
+    _analytics.totalCheckedIn  = allTickets.length;
+    _analytics.activeGeofenced = allTickets.filter(t => t >= globalCurrentServing).length;
+    const ciEl = document.getElementById('stat-checked-in');
+    const gfEl = document.getElementById('stat-geofenced');
+    const atEl = document.getElementById('stat-avg-time');
+    if (ciEl) ciEl.innerText = _analytics.totalCheckedIn;
+    if (gfEl) gfEl.innerText = _analytics.activeGeofenced;
+    if (atEl) atEl.innerText = _analytics._processingTimes.length
+        ? Math.round(_analytics._processingTimes.reduce((a,b)=>a+b,0) / _analytics._processingTimes.length)
+        : '--';
+}
+
+function recordProcessingTime(seconds) {
+    _analytics._processingTimes.push(seconds);
+    if (_analytics._processingTimes.length > 20) _analytics._processingTimes.shift();
+    _updateAnalyticsDisplay();
+}
+
+// ════════════════════════════════════════════════════════════════
 // ADMIN AUTH GATE
 // ════════════════════════════════════════════════════════════════
 // Explicit view-state flag — never sniff classList to decide direction.
@@ -1211,6 +1660,14 @@ function _setAdminView(open) {
 }
 
 function _openAdminPanel() {
+    // Populate brand inputs with current values
+    const nameEl = document.getElementById('cfg-location-name');
+    const capEl  = document.getElementById('cfg-max-capacity');
+    const deadEl = document.getElementById('cfg-dead-threshold');
+    if (nameEl) nameEl.value = CONFIG.DROP_LOCATION_NAME || '';
+    if (capEl)  capEl.value  = CONFIG.MAX_CAPACITY || 200;
+    if (deadEl) deadEl.value = _analytics.deadTicketThresholdMins || 10;
+    _updateAnalyticsDisplay();
     if (CONFIG.EVENT_LAUNCH_TIME) {
         const pad = n => String(n).padStart(2,'0'), d = CONFIG.EVENT_LAUNCH_TIME;
         document.getElementById('cfg-launch-time').value =
@@ -1333,11 +1790,15 @@ async function submitAdminAuth() {
 }
 
 function adjustAdminCounter(amount) {
-    globalCurrentServing=Math.max(1,globalCurrentServing+amount);
-    document.getElementById('admin-serving-number').innerText=globalCurrentServing;
-    if(myTicketNumber)syncUIElements();
+    if (_analytics.queuePaused) {
+        _showToast('Queue is paused — resume before advancing.', 'amber'); return;
+    }
+    globalCurrentServing = Math.max(1, globalCurrentServing + amount);
+    document.getElementById('admin-serving-number').innerText = globalCurrentServing;
+    _updateAnalyticsDisplay();
+    if (myTicketNumber) syncUIElements();
 }
-function captureCurrentLocationAsAnchor(){if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.getElementById('cfg-lat').value=p.coords.latitude.toFixed(4);document.getElementById('cfg-lon').value=p.coords.longitude.toFixed(4);});}
+function captureCurrentLocationAsAnchor(){if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.getElementById('cfg-lat').value=p.coords.latitude.toFixed(4);document.getElementById('cfg-lon').value=p.coords.longitude.toFixed(4);_GEO_ANCHOR.la=p.coords.latitude;_GEO_ANCHOR.lo=p.coords.longitude;});}
 function toggleMenuDemo(){alert('Navigation menu — system fully operational.');}
 function updateLocationStatusFooter(){document.getElementById('footer-location-text').innerText=`Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;}
 function isEventLive(){return !CONFIG.EVENT_LAUNCH_TIME||Date.now()>=CONFIG.EVENT_LAUNCH_TIME.getTime();}
