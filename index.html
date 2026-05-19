@@ -3,157 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Queue - Spot Holder</title>
+    <title>Queue — Secure Drop Access</title>
+
+    <!-- Tailwind v4 browser CDN — utility classes -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Font Awesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- QR code generation library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        body { font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
-        .safari-clickable { cursor:pointer!important; touch-action:manipulation; -webkit-tap-highlight-color:rgba(0,0,0,0)!important; }
 
-
-        /* ── Pager / haptic alert banner ── */
-        #pager-banner { display:none; margin-bottom:1rem; }
-        #pager-banner.visible { display:block; }
-        .pager-inner {
-            background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
-            border: 1.5px solid #f97316;
-            border-radius: 14px;
-            padding: .875rem 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .pager-dot {
-            width: 10px; height: 10px; flex-shrink: 0;
-            background: #f97316;
-            border-radius: 50%;
-            animation: pager-pulse 0.8s ease-in-out infinite;
-        }
-        @keyframes pager-pulse {
-            0%,100% { transform:scale(1);   opacity:1;   box-shadow:0 0 0 0 rgba(249,115,22,.6); }
-            50%      { transform:scale(1.3); opacity:.8;  box-shadow:0 0 0 6px rgba(249,115,22,0); }
-        }
-        .pager-text { flex:1; }
-        .pager-text strong { font-size:12px; color:#9a3412; display:block; }
-        .pager-text span   { font-size:10px; color:#c2410c; font-family:monospace; }
-        /* Mute toggle button */
-        #alert-mute-btn {
-            position: fixed;
-            bottom: 88px;
-            right: 16px;
-            z-index: 150;
-            width: 42px; height: 42px;
-            border-radius: 50%;
-            border: none;
-            background: #1e293b;
-            color: #f8fafc;
-            font-size: 16px;
-            cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,0,0,.25);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: background .15s;
-        }
-        #alert-mute-btn.visible { display:flex; }
-        #alert-mute-btn.muted   { background:#6b7280; }
-
-        /* QR ring */
-        #ticket-qr-container { display:flex; flex-direction:column; align-items:center; margin-bottom:1.25rem; }
-        #ticket-qr-container canvas, #ticket-qr-container img { border-radius:8px; border:1px solid #dadce0; padding:6px; background:#fff; }
-        .qr-ring-wrapper { position:relative; width:36px; height:36px; margin-top:8px; }
-        .qr-ring-svg { transform:rotate(-90deg); width:36px; height:36px; }
-        .qr-ring-track { fill:none; stroke:#e8eaed; stroke-width:3; }
-        .qr-ring-progress { fill:none; stroke:#1a73e8; stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
-        .qr-countdown-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:9px; font-weight:700; color:#5f6368; font-family:monospace; }
-        .qr-live-badge { display:flex; align-items:center; gap:4px; font-size:10px; color:#34A853; font-weight:600; margin-top:4px; letter-spacing:.05em; text-transform:uppercase; }
-        .qr-live-dot { width:6px; height:6px; background:#34A853; border-radius:50%; animation:pulse-dot 1.5s ease-in-out infinite; }
-        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.4;transform:scale(.7);} }
-
-        /* Modal */
-        .modal-overlay { position:fixed; inset:0; background:rgba(32,33,36,.6); backdrop-filter:blur(5px); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; animation:fadeIn .18s ease; }
-        .modal-overlay.hidden { display:none; }
-        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
-        .modal-card { background:#fff; border-radius:20px; border:1px solid #dadce0; padding:1.5rem; width:100%; max-width:360px; box-shadow:0 12px 40px rgba(0,0,0,.15); animation:slideUp .22s ease; }
-        @keyframes slideUp { from{transform:translateY(20px);opacity:0;} to{transform:translateY(0);opacity:1;} }
-
-        /* Wait block */
-        #wait-time-block { background:#f8f9fa; border:1px solid #e8eaed; border-radius:12px; padding:.875rem 1rem; margin-bottom:1rem; text-align:center; }
-        #wait-time-block .wt-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#5f6368; font-weight:600; }
-        #wait-time-block .wt-value { font-size:22px; font-weight:700; color:#1a73e8; margin:2px 0; }
-        #wait-time-block .wt-sub { font-size:11px; color:#70757a; font-family:monospace; }
-
-        /* Pre-launch */
-        #prelaunck-countdown-block { background:linear-gradient(135deg,#f0f4ff,#fafafa); border:1px solid #c7d4f5; border-radius:12px; padding:.875rem 1rem; margin-top:.75rem; text-align:center; }
-        #prelaunck-countdown-block .pl-label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:#5f6368; font-weight:600; margin-bottom:4px; }
-        .pl-go-live-date { font-size:12px; font-weight:600; color:#1a73e8; margin-bottom:6px; }
-        .pl-timer-digits { display:flex; justify-content:center; align-items:flex-end; gap:6px; }
-        .pl-digit-unit { display:flex; flex-direction:column; align-items:center; }
-        .pl-digit-value { font-size:26px; font-weight:800; color:#202124; line-height:1; font-family:monospace; min-width:2ch; }
-        .pl-digit-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:#80868b; margin-top:2px; }
-        .pl-digit-sep { font-size:22px; font-weight:700; color:#dadce0; line-height:1.1; padding-bottom:6px; }
-
-        /* Cooldown banner */
-        #transfer-cooldown-banner { display:none; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:.625rem .875rem; margin-top:.75rem; font-size:11px; color:#9a3412; text-align:center; font-weight:500; }
-        #transfer-cooldown-banner.visible { display:block; }
-
-        /* SAn notice */
-        #suspicious-activity-notice { display:none; margin-top:1rem; background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px; padding:1rem; text-align:left; }
-        #suspicious-activity-notice.visible { display:block; }
-        .san-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-        .san-icon { width:28px; height:28px; background:#fef3c7; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .san-title { font-size:13px; font-weight:700; color:#92400e; }
-        .san-body { font-size:12px; color:#78350f; line-height:1.5; margin-bottom:10px; }
-        .san-ref { font-size:10px; color:#a16207; font-family:monospace; background:#fef9c3; border-radius:6px; padding:4px 8px; display:inline-block; margin-bottom:10px; }
-        .san-cta { display:flex; align-items:center; gap:6px; background:#92400e; color:#fff; font-size:12px; font-weight:600; padding:8px 14px; border-radius:8px; border:none; width:100%; justify-content:center; cursor:pointer; transition:background .15s; touch-action:manipulation; }
-        .san-cta:hover { background:#78350f; }
-
-        /* Flagged panel */
-        .flagged-ticket-row { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:.625rem .875rem; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-        .flagged-ticket-row .flag-info { flex:1; }
-        .flagged-ticket-row .flag-num { font-weight:700; color:#9a3412; font-size:13px; }
-        .flagged-ticket-row .flag-reason { font-size:10px; color:#c2410c; margin-top:1px; }
-        .flag-action-btn { font-size:10px; font-weight:600; padding:3px 8px; border-radius:6px; cursor:pointer; border:none; transition:background .15s; }
-        .flag-action-approve { background:#dcfce7; color:#166534; }
-        .flag-action-approve:hover { background:#bbf7d0; }
-        .flag-action-dismiss { background:#fee2e2; color:#991b1b; }
-        .flag-action-dismiss:hover { background:#fecaca; }
-
-        /* TOTP setup */
-        .totp-setup-qr { display:flex; justify-content:center; margin:1rem 0; }
-        .totp-setup-qr canvas, .totp-setup-qr img { border-radius:8px; border:1px solid #e8eaed; }
-        .totp-secret-display { font-family:monospace; font-size:13px; font-weight:700; letter-spacing:.15em; color:#1a73e8; background:#f0f4ff; border:1px solid #c7d4f5; border-radius:8px; padding:8px 12px; text-align:center; word-break:break-all; }
-
-        /* TOTP gate verify */
-        .totp-pin-input { font-size:28px; font-weight:800; letter-spacing:.3em; text-align:center; font-family:monospace; border:2px solid #dadce0; border-radius:12px; padding:12px; width:100%; color:#202124; outline:none; transition:border-color .15s; }
-        .totp-pin-input:focus { border-color:#1a73e8; }
-        .totp-pin-input.error   { border-color:#ea4335; background:#fef2f2; }
-        .totp-pin-input.success { border-color:#34a853; background:#f0fdf4; }
-        .strike-dots { display:flex; justify-content:center; gap:6px; margin-top:8px; }
-        .strike-dot { width:8px; height:8px; border-radius:50%; background:#e8eaed; transition:background .2s; }
-        .strike-dot.used { background:#ea4335; }
-
-        /* Staff view */
-        #staff-view { display:none; min-height:100vh; background:#0f172a; flex-direction:column; align-items:center; justify-content:center; padding:2rem; }
-        #staff-view.active { display:flex; }
-        .staff-pin-display { font-size:72px; font-weight:900; letter-spacing:.25em; font-family:monospace; color:#f8fafc; text-shadow:0 0 40px rgba(99,179,237,.4); padding:1.5rem 2rem; background:#1e293b; border-radius:20px; border:2px solid #334155; margin:1.5rem 0; }
-        .staff-ring-outer { position:relative; width:80px; height:80px; margin:0 auto 1rem; }
-        .staff-ring-svg { transform:rotate(-90deg); width:80px; height:80px; }
-        .staff-ring-track { fill:none; stroke:#334155; stroke-width:5; }
-        .staff-ring-arc { fill:none; stroke:#38bdf8; stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
-        .staff-ring-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:18px; font-weight:800; color:#94a3b8; font-family:monospace; }
-        .staff-override-log { width:100%; max-width:420px; max-height:180px; overflow-y:auto; background:#1e293b; border-radius:12px; border:1px solid #334155; padding:.75rem; margin-top:1rem; }
-        .override-log-row { font-size:11px; font-family:monospace; color:#94a3b8; padding:3px 0; border-bottom:1px solid #334155; }
-        .override-log-row:last-child { border-bottom:none; }
-        .log-warn { color:#fbbf24; }
-        .log-ok   { color:#34d399; }
-
-        /* MFA badge */
-        #mfa-verified-badge { display:none; align-items:center; justify-content:center; gap:5px; font-size:10px; font-weight:700; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; border-radius:20px; padding:4px 10px; margin-top:6px; text-transform:uppercase; letter-spacing:.05em; }
-        #mfa-verified-badge.visible { display:inline-flex; }
-    </style>
+    <!-- Custom styles (animations, component classes, tenant theme vars) -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-white text-[#202124] flex flex-col justify-between min-h-screen antialiased">
 
@@ -208,10 +73,21 @@
      MAIN APP
 ══════════════════════════════════════════════════════ -->
 <header class="relative z-50 flex justify-between items-center h-16 px-6 border-b border-gray-50 text-sm text-[#5f6368] bg-white select-none">
-    <div class="flex items-center space-x-2">
+    <div class="flex items-center gap-3">
         <span class="font-medium text-gray-900" id="nav-title">Store Queue System</span>
+        <!-- Shown after tenant login -->
+        <div id="tenant-header-badge" class="tenant-context-badge hidden">
+            <div class="tenant-color-dot"></div>
+            <div>
+                <div class="tenant-badge-name" id="tenant-badge-name">—</div>
+                <div class="tenant-badge-role">Organizer Session</div>
+            </div>
+        </div>
     </div>
-    <div class="flex items-center space-x-4">
+    <div class="flex items-center gap-2">
+        <button id="tenant-signout-btn" class="hidden" onclick="tenantSignOut()" title="Sign out">
+            <i class="fa-solid fa-right-from-bracket mr-1"></i>Sign Out
+        </button>
         <button onclick="toggleAdminMode()" class="safari-clickable text-xs text-gray-400 hover:text-gray-600 font-medium py-2 px-3 rounded-md hover:bg-gray-50 transition">Admin Portal</button>
         <button onclick="toggleMenuDemo()" class="safari-clickable text-[#5f6368] hover:text-gray-900 p-2 rounded-md hover:bg-gray-50 transition"><i class="fa-solid fa-bars text-lg"></i></button>
     </div>
@@ -343,20 +219,41 @@
                 <div class="san-ref" id="san-ref-code"></div>
                 <button class="san-cta safari-clickable" onclick="showFlagHelpInfo()"><i class="fa-solid fa-circle-info"></i>What does this mean?</button>
             </div>
+
+            <!-- No-show / expired ticket banner (Sprint 6) -->
+            <div id="noshow-banner" role="alert"></div>
         </div>
     </div>
 
     <!-- ADMIN VIEW -->
     <div id="admin-view" class="w-full max-w-lg bg-white rounded-2xl border border-dashed border-gray-300 p-6 hidden">
         <!-- ── Dashboard header ── -->
-        <div class="border-b border-gray-100 pb-4 mb-5 flex justify-between items-center">
-            <div>
-                <h2 class="text-xl font-bold text-gray-900" id="admin-drop-name-display">Organizer Dashboard</h2>
-                <p class="text-xs text-gray-500" id="admin-drop-subtitle">Live Drop Controller</p>
+        <div class="border-b border-gray-100 pb-4 mb-5">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900" id="admin-drop-name-display">Organizer Dashboard</h2>
+                    <p class="text-xs text-gray-500" id="admin-drop-subtitle">Live Drop Controller</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span id="queue-paused-badge" class="hidden bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-pause mr-1"></i>Queue Paused</span>
+                    <span class="bg-blue-50 text-blue-700 text-xs font-mono px-2 py-1 rounded">Host Mode</span>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <span id="queue-paused-badge" class="hidden bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-pause mr-1"></i>Queue Paused</span>
-                <span class="bg-blue-50 text-blue-700 text-xs font-mono px-2 py-1 rounded">Host Mode</span>
+            <!-- Tenant context strip — visible after login -->
+            <div id="admin-tenant-strip" class="hidden rounded-xl border p-3 flex items-center justify-between gap-3"
+                 style="background:var(--tenant-bg);border-color:var(--tenant-border);">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div id="admin-tenant-logo" class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0"
+                         style="background:var(--tenant-primary);color:#fff;">?</div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold truncate" id="admin-tenant-name" style="color:var(--tenant-text);">—</div>
+                        <div class="text-[10px] text-slate-400 font-mono" id="admin-tenant-id">tenant_id: —</div>
+                    </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="text-[10px] text-slate-400">QR Salt</div>
+                    <div class="text-[10px] font-mono font-bold text-slate-600" id="admin-salt-preview">••••••••</div>
+                </div>
             </div>
         </div>
 
@@ -511,6 +408,12 @@
                 <button onclick="runTestCase('admin_setup')" class="safari-clickable w-full text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 transition font-medium text-slate-600">
                     <i class="fa-solid fa-key mr-1 text-slate-400"></i>Test 4 — Show admin TOTP setup instructions
                 </button>
+                <button onclick="runTestCase('velocity')" class="safari-clickable w-full text-left text-xs bg-white border border-violet-200 rounded-lg px-3 py-2 hover:bg-violet-50 transition font-medium text-violet-700">
+                    <i class="fa-solid fa-play mr-1 text-violet-400"></i>Test 5 — Line velocity engine (Sprint 5)
+                </button>
+                <button onclick="runTestCase('noshow')" class="safari-clickable w-full text-left text-xs bg-white border border-violet-200 rounded-lg px-3 py-2 hover:bg-violet-50 transition font-medium text-violet-700">
+                    <i class="fa-solid fa-play mr-1 text-violet-400"></i>Test 6 — No-show decay loop (Sprint 6)
+                </button>
             </div>
             <div id="test-output" class="hidden mt-3 bg-gray-900 rounded-lg p-3 text-xs font-mono text-green-400 whitespace-pre-wrap max-h-52 overflow-y-auto"></div>
         </div>
@@ -658,1285 +561,74 @@
 </div>
 
 
-<script>
-// ════════════════════════════════════════════════════════════════
-// CONFIG & STATE
-// ════════════════════════════════════════════════════════════════
-// ── Geo abstraction layer ───────────────────────────────────────
-// Raw coordinates are never exposed directly in CONFIG or any
-// client-visible variable. The _GEO_ANCHOR blob is a lightweight
-// obfuscation: in production, replace with a Supabase Edge Function
-// call that returns only a boolean (in/out) — no coords ever touch
-// the client at all (see _verifyCheckinPayload below).
-// The encode/decode here is NOT security — it's a friction layer
-// to prevent casual DevTools coordinate overrides.
-const _GEO_ANCHOR = (function () {
-    // btoa of JSON so coordinates are not grep-able as plain floats
-    const _b = 'eyJhIjozOC45MzYwLCJvIjotNzYuNzUwMH0='; // {"a":38.9360,"o":-76.7500}
-    try { const p = JSON.parse(atob(_b)); return { la: p.a, lo: p.o }; }
-    catch { return { la: 0, lo: 0 }; }
-})();
 
-const CONFIG = {
-    // Coordinates deliberately absent — consumed only via _GEO_ANCHOR
-    ALLOWED_RADIUS_MILES: 1.0,
-    EVENT_LAUNCH_TIME: null,
-    TRANSFER_LOCKOUT_MINS: 30,
-    MAX_TICKETS_PER_DEVICE: 2,
-    TOTP_STEP_SECS: 30,
-    TOTP_DIGITS: 6,
-    GATE_MAX_STRIKES: 3,
-    // Brand / event settings (editable from admin panel)
-    DROP_LOCATION_NAME: 'Queue Drop Event',
-    MAX_CAPACITY: 200
-};
 
-let myTicketNumber    = null;
-let myTOTPSecret      = null;   // base32 TOTP secret tied to this ticket
-let totpSetupVerified = false;  // true after user confirms setup code
-let mfaGatePassed     = false;  // true after successful gate TOTP verify
-let gateStrikes       = 0;      // wrong gate attempts
-
-let globalCurrentServing = 1;
-let _preLaunchInterval   = null;
-let _waitCountdownInterval = null;
-let _waitCountdownSeconds  = 60;
-
-let DEVICE_REGISTRY    = {};    // { deviceId: [ticketNumber, ...] }
-let FLAGGED_TICKETS    = [];    // [{ ticket, deviceId, reason, refCode, timestamp }]
-
-// ── Pager / audio alert state ────────────────────────────────────
-let _pagerActive        = false;  // true once 5-away or 0-away triggered
-let _alertMuted         = false;  // user-toggled mute
-let _audioCtx           = null;   // Web Audio API context (lazy-init on first interaction)
-let _pagerVibrateHandle = null;   // interval for repeating vibration
-
-// ── Queue analytics state (admin dashboard) ──────────────────────
-let _analytics = {
-    totalCheckedIn:    0,
-    activeGeofenced:   0,
-    avgProcessingSecs: 0,
-    _processingTimes:  [],        // rolling window for average calc
-    queuePaused:       false,
-    deadTicketThresholdMins: 10
-};
-
-let _staffPinInterval  = null;
-let staffOverrideCount = 0;
-let staffOkCount       = 0;
-let staffOverrideLog   = [];
-
-// Device fingerprint — djb2 hash of browser signals
-const DEVICE_ID = (function () {
-    const s = [navigator.userAgent, navigator.language,
-                screen.width+'x'+screen.height, screen.colorDepth,
-                new Date().getTimezoneOffset(),
-                navigator.hardwareConcurrency||0, navigator.platform||''].join('|');
-    let h = 5381;
-    for (let i = 0; i < s.length; i++) h = ((h<<5)+h) ^ s.charCodeAt(i);
-    return 'dev_'+Math.abs(h).toString(36);
-})();
-
-document.getElementById('cfg-lat').value = CONFIG.STORE_LAT;
-document.getElementById('cfg-lon').value = CONFIG.STORE_LON;
-updateLocationStatusFooter();
-
-document.getElementById('cfg-launch-time').addEventListener('change', function () {
-    const p = document.getElementById('cfg-launch-preview');
-    const t = document.getElementById('cfg-launch-preview-text');
-    if (!this.value) { p.classList.add('hidden'); return; }
-    const d = new Date(this.value);
-    t.innerText = `Drop set for ${d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'})} at ${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
-    p.classList.remove('hidden');
-});
-
-if (window.location.hash === '#staff') enterStaffView();
-
-
-// ════════════════════════════════════════════════════════════════
-// TOTP ENGINE  (RFC 6238 — compatible with Google Authenticator)
-// ════════════════════════════════════════════════════════════════
-
-/**
- * generateTOTPSecret()
- * Random 16-char base32 secret. In production: generate server-side,
- * store encrypted in Supabase tickets row, never re-expose after setup.
- */
-function generateTOTPSecret() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let s = '';
-    for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random()*chars.length)];
-    return s;
-}
-
-/** base32Decode — converts base32 string to Uint8Array for HMAC */
-function base32Decode(secret) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let bits = 0, value = 0;
-    const out = [];
-    for (const c of secret.toUpperCase().replace(/=+$/,'')) {
-        value = (value<<5) | chars.indexOf(c);
-        bits += 5;
-        if (bits >= 8) { out.push((value>>>(bits-8))&255); bits -= 8; }
-    }
-    return new Uint8Array(out);
-}
-
-/**
- * computeTOTP(secret, timestamp?)
- * Generates a 6-digit TOTP using HMAC-SHA1 via SubtleCrypto.
- * Returns Promise<string>. Algorithm: RFC 6238 / RFC 4226.
- */
-async function computeTOTP(secret, atTime = Date.now()) {
-    const counter     = Math.floor(atTime / 1000 / CONFIG.TOTP_STEP_SECS);
-    const keyBytes    = base32Decode(secret);
-    const ctrBytes    = new Uint8Array(8);
-    let   c           = counter;
-    for (let i = 7; i >= 0; i--) { ctrBytes[i] = c & 0xff; c >>>= 8; }
-
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw', keyBytes, { name:'HMAC', hash:'SHA-1' }, false, ['sign']);
-    const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, ctrBytes));
-
-    // Dynamic truncation
-    const offset = sig[19] & 0x0f;
-    const code   = ((sig[offset]&0x7f)<<24 | sig[offset+1]<<16 | sig[offset+2]<<8 | sig[offset+3]) % 1000000;
-    return String(code).padStart(CONFIG.TOTP_DIGITS,'0');
-}
-
-/**
- * verifyTOTP(secret, userInput)
- * Accepts current window ± 1 step (30s tolerance) to handle minor clock drift.
- */
-async function verifyTOTP(secret, userInput) {
-    const step = CONFIG.TOTP_STEP_SECS * 1000;
-    for (const offset of [0, -step, step]) {
-        if (userInput.trim() === await computeTOTP(secret, Date.now()+offset)) return true;
-    }
-    return false;
-}
-
-/**
- * buildTOTPUri(secret, ticketNumber)
- * otpauth:// URI — scannable by Google Authenticator, Authy, Apple Passwords.
- */
-function buildTOTPUri(secret, ticketNumber) {
-    const label  = encodeURIComponent(`QueueDrop:#${ticketNumber}`);
-    const issuer = encodeURIComponent('QueueDrop');
-    return `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// GEOLOCATION & TICKET GENERATION
-// ════════════════════════════════════════════════════════════════
-function getDigitalTicket() {
-    const st = document.getElementById('geo-status');
-    st.className = 'text-center text-xs text-[#5f6368] font-mono animate-pulse';
-    st.innerText = 'Authenticating hardware GPS signal...';
-    if (!navigator.geolocation) { st.innerText = 'Location unavailable.'; return; }
-    navigator.geolocation.getCurrentPosition(successGPS, errorGPS,
-        { enableHighAccuracy:true, timeout:15000, maximumAge:5000 });
-}
-
-async function successGPS(pos) {
-    const st = document.getElementById('geo-status');
-
-    // Build the check-in payload with canvas fingerprint + base64 encoding.
-    // In production this is POSTed to a Supabase Edge Function for server-side
-    // haversine verification — the true geofence center never leaves the server.
-    const payload = await _buildCheckinPayload(pos.coords.latitude, pos.coords.longitude);
-    console.debug('[CheckIn] Payload dispatched (preview):', payload.preview);
-
-    // CLIENT-SIDE FALLBACK — uses obfuscated anchor, not raw CONFIG coords.
-    // In production: remove this block and rely solely on _verifyCheckinPayload().
-    const dist = calculateHaversine(pos.coords.latitude, pos.coords.longitude,
-                                    _GEO_ANCHOR.la, _GEO_ANCHOR.lo);
-    document.getElementById('distance-debug').innerText = `${dist.toFixed(3)} mi away`;
-
-    if (dist <= CONFIG.ALLOWED_RADIUS_MILES) {
-        generateTicket(payload);
-    } else {
-        st.className = 'text-center text-xs text-rose-600 font-mono bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2';
-        st.innerHTML = `<i class="fa-solid fa-ban"></i> <strong>Out of Bounds.</strong><br>You are ${dist.toFixed(2)} mi away. You must be inside the geofence.`;
-    }
-}
-
-/**
- * _buildCheckinPayload(lat, lon)
- * Bundles: coordinates + device timestamp + canvas fingerprint
- * into a single base64-encoded object for transmission.
- *
- * Canvas fingerprint technique: renders invisible text and reads back pixel
- * data — GPU/driver differences produce a unique hash per device/browser.
- * Much harder to spoof than navigator properties alone.
- */
-async function _buildCheckinPayload(lat, lon) {
-    // Canvas fingerprint
-    const canvas = document.createElement('canvas');
-    canvas.width = 200; canvas.height = 40;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, 200, 40);
-    ctx.fillStyle = '#1a73e8'; ctx.font = '14px Arial';
-    ctx.fillText('QueueDrop®☃©', 10, 26);
-    const imgData = canvas.toDataURL();
-    // djb2 the canvas data URL for a compact hash
-    let canvasHash = 5381;
-    for (let i = 0; i < imgData.length; i++)
-        canvasHash = ((canvasHash << 5) + canvasHash) ^ imgData.charCodeAt(i);
-    canvasHash = Math.abs(canvasHash).toString(36);
-
-    const raw = {
-        lat,
-        lon,
-        ts:   Date.now(),
-        devId: DEVICE_ID,
-        cfp:   canvasHash,        // canvas fingerprint
-        ua:    btoa(navigator.userAgent.slice(0, 64))
-    };
-
-    const encoded = btoa(JSON.stringify(raw));
-    return {
-        encoded,                          // sent to Edge Function
-        preview: `lat=~${lat.toFixed(2)} cfp=${canvasHash}`  // safe to log
-    };
-}
-
-/**
- * _verifyCheckinPayload(payload)
- * Production Supabase Edge Function integration boilerplate.
- * The Edge Function receives the encoded payload, decodes it server-side,
- * runs haversine against the TRUE anchor (stored in Supabase env vars),
- * and returns { allowed: bool, ticketNumber: int | null }.
- *
- * The geofence center coordinates NEVER appear in client JS or network responses.
- *
- * Example Edge Function (Deno / Supabase):
- * ─────────────────────────────────────────
- * import { serve } from "https://deno.land/std/http/server.ts";
- * const ANCHOR_LAT = Deno.env.get("ANCHOR_LAT");  // set in Supabase dashboard
- * const ANCHOR_LON = Deno.env.get("ANCHOR_LON");
- * const RADIUS_MI  = parseFloat(Deno.env.get("RADIUS_MI") ?? "1.0");
- *
- * serve(async (req) => {
- *   const { encoded } = await req.json();
- *   const { lat, lon, ts, devId, cfp } = JSON.parse(atob(encoded));
- *   if (Math.abs(Date.now() - ts) > 30000) return resp({ allowed:false, reason:"stale" });
- *   const dist = haversine(lat, lon, ANCHOR_LAT, ANCHOR_LON);
- *   if (dist > RADIUS_MI) return resp({ allowed:false, reason:"out_of_bounds" });
- *   // Insert ticket row in Supabase DB, return ticket number
- *   return resp({ allowed:true, ticketNumber: await issueTicket(devId) });
- * });
- */
-async function _verifyCheckinPayload(payload) {
-    // ── PRODUCTION: uncomment and set your Edge Function URL ──
-    // const res = await fetch('https://<project>.supabase.co/functions/v1/checkin', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json',
-    //                'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-    //     body: JSON.stringify({ encoded: payload.encoded })
-    // });
-    // return await res.json(); // { allowed: bool, ticketNumber: int }
-    console.log('[Dev mode] Edge Function call skipped — using client-side fallback');
-    return null;
-}
-
-function errorGPS() {
-    const st = document.getElementById('geo-status');
-    st.className = 'text-center text-xs text-amber-600 font-mono bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2';
-    st.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <strong>GPS Sync Issue.</strong><br>Ensure Wi-Fi is on and location permissions are granted.`;
-}
-
-function calculateHaversine(lat1,lon1,lat2,lon2) {
-    const R=3958.8,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
-    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function generateTicket() {
-    // Device cap check
-    const existing = DEVICE_REGISTRY[DEVICE_ID] || [];
-    if (existing.length >= CONFIG.MAX_TICKETS_PER_DEVICE) {
-        flagTicket(existing[0], DEVICE_ID,
-            `Check-in blocked: device already holds ${existing.length} ticket(s) (cap: ${CONFIG.MAX_TICKETS_PER_DEVICE})`);
-        const st = document.getElementById('geo-status');
-        st.className = 'text-center text-xs text-rose-600 font-mono bg-rose-50 p-3 rounded-lg border border-rose-100 mt-2';
-        st.innerHTML = `<i class="fa-solid fa-ban"></i> <strong>Limit reached.</strong><br>Max of ${CONFIG.MAX_TICKETS_PER_DEVICE} tickets per device. This attempt has been flagged.`;
-        return;
-    }
-
-    myTicketNumber = Math.floor(Math.random()*12)+45;
-    if (!DEVICE_REGISTRY[DEVICE_ID]) DEVICE_REGISTRY[DEVICE_ID] = [];
-    DEVICE_REGISTRY[DEVICE_ID].push(myTicketNumber);
-
-    // Generate fresh TOTP secret for this ticket
-    myTOTPSecret      = generateTOTPSecret();
-    totpSetupVerified = false;
-    mfaGatePassed     = false;
-    gateStrikes       = 0;
-
-    document.getElementById('join-card').classList.add('hidden');
-    document.getElementById('ticket-card').classList.remove('hidden');
-    document.getElementById('user-number').innerText = `#${myTicketNumber}`;
-    const now = new Date();
-    document.getElementById('timestamp-display').innerText =
-        `Secured at ${now.toLocaleDateString([],{month:'short',day:'numeric'})} · ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
-    document.getElementById('mfa-verified-badge').classList.remove('visible');
-
-    // Update analytics
-    _analytics.totalCheckedIn++;
-    _analytics.activeGeofenced++;
-    _updateAnalyticsDisplay();
-
-    syncUIElements();
-    syncTransferLockState();
-    initQRRotation();
-    // Show TOTP setup after ticket renders
-    setTimeout(openTOTPSetupModal, 800);
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// TOTP SETUP MODAL
-// ════════════════════════════════════════════════════════════════
-function closeTOTPSetupModal() {
-    document.getElementById('totp-setup-modal').classList.add('hidden');
-}
-function openTOTPSetupModal() {
-    const container = document.getElementById('totp-setup-qr-container');
-    container.innerHTML = '';
-    new QRCode(container, { text: buildTOTPUri(myTOTPSecret, myTicketNumber),
-        width:160, height:160, colorDark:'#1a73e8', colorLight:'#ffffff',
-        correctLevel: QRCode.CorrectLevel.M });
-
-    document.getElementById('totp-secret-display').innerText =
-        myTOTPSecret.match(/.{1,4}/g).join(' ');
-    document.getElementById('totp-confirm-input').value = '';
-    document.getElementById('totp-confirm-error').classList.add('hidden');
-    document.getElementById('totp-setup-modal').classList.remove('hidden');
-}
-
-async function confirmTOTPSetup() {
-    const input = document.getElementById('totp-confirm-input').value.trim();
-    const errEl = document.getElementById('totp-confirm-error');
-    if (!await verifyTOTP(myTOTPSecret, input)) {
-        errEl.classList.remove('hidden');
-        document.getElementById('totp-confirm-input').classList.add('error');
-        return;
-    }
-    totpSetupVerified = true;
-    errEl.classList.add('hidden');
-    document.getElementById('totp-setup-modal').classList.add('hidden');
-    _showToast('Authenticator set up ✓ — your ticket is now MFA-protected.', 'green');
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// GATE VERIFY MODAL
-// ════════════════════════════════════════════════════════════════
-function openGateVerifyModal() {
-    if (mfaGatePassed) return;
-    document.getElementById('gate-totp-input').value = '';
-    document.getElementById('gate-totp-input').className = 'totp-pin-input';
-    document.getElementById('gate-totp-input').disabled  = false;
-    document.getElementById('gate-totp-error').classList.add('hidden');
-    document.getElementById('gate-totp-lockout').classList.add('hidden');
-    _updateStrikeUI();
-    document.getElementById('gate-verify-modal').classList.remove('hidden');
-}
-function closeGateVerifyModal() { document.getElementById('gate-verify-modal').classList.add('hidden'); }
-function onGatePinInput(input)  { if (input.value.length === 6) submitGateTOTP(); }
-
-async function submitGateTOTP() {
-    if (gateStrikes >= CONFIG.GATE_MAX_STRIKES) return;
-    const input  = document.getElementById('gate-totp-input').value.trim();
-    const pinEl  = document.getElementById('gate-totp-input');
-    const errEl  = document.getElementById('gate-totp-error');
-    const lockEl = document.getElementById('gate-totp-lockout');
-
-    if (!totpSetupVerified || !myTOTPSecret) {
-        errEl.innerText = 'Authenticator not set up yet. Scan the setup QR first.';
-        errEl.classList.remove('hidden'); return;
-    }
-
-    const valid = await verifyTOTP(myTOTPSecret, input);
-    if (valid) {
-        mfaGatePassed = true;
-        pinEl.className = 'totp-pin-input success';
-        errEl.classList.add('hidden');
-        staffOkCount++;
-        _updateStaffStats();
-        recordProcessingTime(Math.floor(Math.random()*40)+15); // prod: real timestamp delta
-        setTimeout(() => {
-            closeGateVerifyModal();
-            document.getElementById('mfa-verified-badge').classList.add('visible');
-            document.getElementById('gate-verify-cta').classList.add('hidden');
-            _showToast('Identity verified ✓  You may now enter.', 'green');
-        }, 600);
-    } else {
-        gateStrikes++;
-        _updateStrikeUI();
-        pinEl.value = ''; pinEl.className = 'totp-pin-input error';
-        setTimeout(() => { pinEl.className = 'totp-pin-input'; }, 1000);
-        if (gateStrikes >= CONFIG.GATE_MAX_STRIKES) {
-            errEl.classList.add('hidden'); lockEl.classList.remove('hidden'); pinEl.disabled = true;
-            const refCode = `FLAG-${myTicketNumber}-${DEVICE_ID.slice(-4).toUpperCase()}`;
-            flagTicket(myTicketNumber, DEVICE_ID, `Gate TOTP failed ${CONFIG.GATE_MAX_STRIKES}x — manual review required`);
-            _showSuspiciousActivityNotice(`Gate TOTP failed ${CONFIG.GATE_MAX_STRIKES}x — manual review required`, refCode);
-            staffOverrideLog.push({ time:_nowStr(), msg:`⚠ Ticket #${myTicketNumber} — 3-strike lockout`, type:'warn' });
-            staffOverrideCount++; _updateStaffStats(); _renderStaffLog();
-        } else {
-            const rem = CONFIG.GATE_MAX_STRIKES - gateStrikes;
-            errEl.innerText = `Incorrect code. ${rem} attempt${rem!==1?'s':''} remaining.`;
-            errEl.classList.remove('hidden');
-        }
-    }
-}
-
-function _updateStrikeUI() {
-    for (let i=1; i<=CONFIG.GATE_MAX_STRIKES; i++) {
-        const d = document.getElementById(`strike-${i}`);
-        if (d) d.className = 'strike-dot'+(i<=gateStrikes?' used':'');
-    }
-    const lbl = document.getElementById('gate-strike-label');
-    const rem = CONFIG.GATE_MAX_STRIKES - gateStrikes;
-    if (lbl) lbl.innerText = `${rem} attempt${rem!==1?'s':''} remaining`;
-}
-
-function requestStaffOverride() {
-    const refCode = `FLAG-${myTicketNumber}-${DEVICE_ID.slice(-4).toUpperCase()}`;
-    closeGateVerifyModal();
-    staffOverrideLog.push({ time:_nowStr(), msg:`Override requested — Ticket #${myTicketNumber} (${refCode})`, type:'warn' });
-    staffOverrideCount++; _updateStaffStats(); _renderStaffLog();
-    flagTicket(myTicketNumber, DEVICE_ID, `Staff override requested at gate (${refCode})`);
-    _showToast(`Show reference ${refCode} to a staff member at the gate.`, 'amber');
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// STAFF iPAD VIEW
-// ════════════════════════════════════════════════════════════════
-
-// Demo-only shared secret for the override PIN.
-// In production: provisioned by the organizer during event setup,
-// stored in Supabase, never hardcoded.
-const STAFF_SECRET      = 'JBSWY3DPEHPK3PXP';
-const STAFF_CIRCUMFERENCE = 2 * Math.PI * 34;
-
-// Snapshot which view was active before entering staff mode so we can restore it on exit.
-// Without this, _adminViewOpen and the actual DOM diverge after exitStaffView(), which
-// causes the Admin Portal button to read the wrong state and get stuck.
-let _preStaffViewWasAdmin = false;
-
-function enterStaffView() {
-    _preStaffViewWasAdmin = _adminViewOpen;
-    document.querySelector('header').style.display = 'none';
-    document.querySelector('main').style.display   = 'none';
-    document.querySelector('footer').style.display = 'none';
-    document.getElementById('staff-view').classList.add('active');
-    window.location.hash = '#staff';
-    _startStaffPinClock();
-}
-
-function exitStaffView() {
-    document.querySelector('header').style.display = '';
-    document.querySelector('main').style.display   = '';
-    document.querySelector('footer').style.display = '';
-    document.getElementById('staff-view').classList.remove('active');
-    window.location.hash = '';
-    if (_staffPinInterval) { clearInterval(_staffPinInterval); _staffPinInterval = null; }
-    // Restore whichever view was showing before staff mode
-    _setAdminView(_preStaffViewWasAdmin);
-}
-
-async function _startStaffPinClock() {
-    async function tick() {
-        const now  = Date.now();
-        const code = await computeTOTP(STAFF_SECRET, now);
-        const el   = document.getElementById('staff-pin-display');
-        if (el) el.innerText = code.slice(0,4); // 4-digit override PIN
-
-        const elapsed   = Math.floor(now/1000) % CONFIG.TOTP_STEP_SECS;
-        const remaining = CONFIG.TOTP_STEP_SECS - elapsed;
-        const arc = document.getElementById('staff-ring-arc');
-        const lbl = document.getElementById('staff-ring-label');
-        if (arc) { arc.style.strokeDasharray=`${STAFF_CIRCUMFERENCE} ${STAFF_CIRCUMFERENCE}`; arc.style.strokeDashoffset=STAFF_CIRCUMFERENCE*(1-remaining/CONFIG.TOTP_STEP_SECS); }
-        if (lbl) lbl.innerText = remaining;
-    }
-    tick();
-    _staffPinInterval = setInterval(tick, 1000);
-}
-
-function _updateStaffStats() {
-    const oc = document.getElementById('staff-override-count');
-    const ok = document.getElementById('staff-ok-count');
-    const fc = document.getElementById('staff-flag-count');
-    if (oc) oc.innerText = staffOverrideCount;
-    if (ok) ok.innerText = staffOkCount;
-    if (fc) fc.innerText = FLAGGED_TICKETS.length;
-}
-
-function _renderStaffLog() {
-    const log = document.getElementById('staff-override-log');
-    if (!log) return;
-    if (!staffOverrideLog.length) {
-        log.innerHTML='<div class="override-log-row" style="color:#475569;text-align:center;">No override events yet.</div>'; return;
-    }
-    log.innerHTML = staffOverrideLog.slice().reverse().map(e =>
-        `<div class="override-log-row"><span style="color:#475569;">${e.time}</span> — <span class="${e.type==='warn'?'log-warn':'log-ok'}">${e.msg}</span></div>`).join('');
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// syncUIElements — PRE-LAUNCH / LIVE dual-mode
-// ════════════════════════════════════════════════════════════════
-function syncUIElements() {
-    const servingEl   = document.getElementById('now-serving');
-    const aheadEl     = document.getElementById('people-ahead');
-    const alertText   = document.getElementById('alert-text');
-    const alertBanner = document.getElementById('alert-banner');
-    const alertIcon   = document.getElementById('alert-icon');
-    const wtBlock     = document.getElementById('wait-time-block');
-    const wtValue     = document.getElementById('wt-value');
-    const wtSub       = document.getElementById('wt-sub');
-    const gateCta     = document.getElementById('gate-verify-cta');
-
-    servingEl.innerText = globalCurrentServing;
-    const remaining = Math.max(myTicketNumber - globalCurrentServing, 0);
-    aheadEl.innerText = remaining;
-
-    if (!isEventLive()) {
-        wtBlock.style.display = 'none'; _clearWaitCountdown();
-        if (!_preLaunchInterval) startPreLaunchCountdown();
-        if (gateCta) gateCta.classList.add('hidden');
-        alertText.innerText   = "Drop hasn't launched yet — your spot is secured. Stay close!";
-        alertBanner.className = 'bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm flex items-start space-x-3';
-        alertIcon.className   = 'fa-solid fa-hourglass-half text-[#1a73e8] mt-0.5 text-base';
-        return;
-    }
-
-    document.getElementById('prelaunck-countdown-block').classList.add('hidden');
-    if (_preLaunchInterval) { clearInterval(_preLaunchInterval); _preLaunchInterval = null; }
-    wtBlock.style.display = 'block';
-    const estimatedMins = remaining * 3;
-
-    if (remaining <= 0) {
-        if (!_pagerActive) _triggerPager('urgent');
-        _clearWaitCountdown();
-        wtBlock.style.background  = '#f0fdf4'; wtBlock.style.borderColor = '#bbf7d0';
-        wtValue.style.color = '#16a34a'; wtValue.innerText = 'Your Turn!';
-        wtSub.innerText = 'Proceed to entrance immediately';
-        alertText.innerText   = 'Your number is active. Show your verified pass to staff.';
-        alertBanner.className = 'bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm flex items-start space-x-3';
-        alertIcon.className   = 'fa-solid fa-circle-check text-[#34A853] mt-0.5 text-base';
-        // Show gate verify CTA if MFA not yet passed
-        if (!mfaGatePassed && totpSetupVerified && gateCta) gateCta.classList.remove('hidden');
-    } else {
-        wtBlock.style.background  = '#f8f9fa'; wtBlock.style.borderColor = '#e8eaed';
-        wtValue.style.color = '#1a73e8'; wtValue.innerText = formatDuration(estimatedMins);
-        _clearWaitCountdown(); _startWaitCountdown(wtSub, estimatedMins);
-        if (gateCta) gateCta.classList.add('hidden');
-        if (remaining <= 5 && remaining > 0) {
-            if (!_pagerActive) _triggerPager('warning');
-            alertText.innerText   = remaining === 1
-                ? '⚡ You are NEXT — proceed to entrance immediately!'
-                : `You are ${remaining} away! Please return to the entrance now.`;
-            alertBanner.className = 'bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex items-start space-x-3';
-            alertIcon.className   = 'fa-solid fa-bell text-[#fbbc05] mt-0.5 text-base animate-bounce';
-        } else {
-            alertText.innerText   = 'You are safely in line. Keep this page open.';
-            alertBanner.className = 'bg-[#f8f9fa] border border-[#dadce0] rounded-xl p-4 text-sm flex items-start space-x-3';
-            alertIcon.className   = 'fa-solid fa-circle-info text-[#4285F4] mt-0.5 text-base';
-        }
-    }
-}
-
-function _startWaitCountdown(subEl, estimatedMins) {
-    _waitCountdownSeconds = 60;
-    const estTime = formatEstimatedTurnTime(estimatedMins);
-    subEl.innerText = `${estTime} · Next update in ${_waitCountdownSeconds}s`;
-    _waitCountdownInterval = setInterval(() => {
-        _waitCountdownSeconds--;
-        if (_waitCountdownSeconds <= 0) { subEl.innerText='Syncing with live queue...'; _waitCountdownSeconds=60; }
-        else subEl.innerText = `${estTime} · Next update in ${_waitCountdownSeconds}s`;
-    }, 1000);
-}
-function _clearWaitCountdown() { if (_waitCountdownInterval) { clearInterval(_waitCountdownInterval); _waitCountdownInterval=null; } }
-
-
-// ════════════════════════════════════════════════════════════════
-// PAGER / HAPTIC / AUDIO ALERT ENGINE
-// ════════════════════════════════════════════════════════════════
-
-/**
- * _triggerPager(level)
- * Called when remaining tickets cross the 5-away ('warning') or 0 ('urgent')
- * threshold. Fires haptics, audio, and shows the banner.
- * De-duped by _pagerActive so it only fires once per threshold crossing.
- */
-function _triggerPager(level) {
-    _pagerActive = true;
-    // Show banner + mute button
-    document.getElementById('pager-banner').classList.add('visible');
-    document.getElementById('alert-mute-btn').classList.add('visible');
-
-    // ── Vibration (Android + some iOS 16.4+ PWA) ──
-    // Pattern: long-short-long-short-long for urgency
-    if (navigator.vibrate) {
-        navigator.vibrate([500, 200, 500, 200, 500]);
-        // Repeat every 8 seconds for warning, 5 seconds for urgent
-        if (_pagerVibrateHandle) clearInterval(_pagerVibrateHandle);
-        const interval = level === 'urgent' ? 5000 : 8000;
-        _pagerVibrateHandle = setInterval(() => {
-            if (!_alertMuted && navigator.vibrate)
-                navigator.vibrate(level === 'urgent'
-                    ? [500, 200, 500, 200, 500]
-                    : [300, 150, 300]);
-        }, interval);
-    }
-
-    // ── Audio chime (Web Audio API — no file dependency) ──
-    // Plays on first user interaction context; gracefully skips on iOS restricted mode.
-    _playAlertChime(level);
-}
-
-/**
- * _playAlertChime(level)
- * Synthesises a chime using Web Audio oscillators — no audio file needed.
- * 'warning': two ascending tones (ding-dong)
- * 'urgent':  three rapid descending tones (alarm pattern)
- *
- * AudioContext must be created or resumed inside a user gesture to satisfy
- * browser autoplay policy. The mute button acts as the interaction handshake
- * on iOS: toggling mute creates/resumes the AudioContext so subsequent
- * programmatic plays succeed.
- */
-function _playAlertChime(level) {
-    if (_alertMuted) return;
-    try {
-        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (_audioCtx.state === 'suspended') _audioCtx.resume();
-
-        const notes = level === 'urgent'
-            ? [880, 660, 440]   // descending — alarm feel
-            : [523, 659];       // C5→E5 — gentle two-note chime
-
-        notes.forEach((freq, i) => {
-            const osc  = _audioCtx.createOscillator();
-            const gain = _audioCtx.createGain();
-            osc.connect(gain); gain.connect(_audioCtx.destination);
-            osc.type      = level === 'urgent' ? 'square' : 'sine';
-            osc.frequency.value = freq;
-            const start = _audioCtx.currentTime + i * 0.22;
-            gain.gain.setValueAtTime(0, start);
-            gain.gain.linearRampToValueAtTime(0.35, start + 0.04);
-            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.38);
-            osc.start(start); osc.stop(start + 0.4);
-        });
-    } catch (e) {
-        console.warn('[Pager] Audio unavailable:', e.message);
-    }
-}
-
-/**
- * toggleAlertMute()
- * User-controlled mute toggle. Also serves as the autoplay interaction
- * handshake — tapping unmute creates and warms the AudioContext so the
- * next programmatic chime can fire without a gesture requirement.
- */
-function toggleAlertMute() {
-    _alertMuted = !_alertMuted;
-    const btn  = document.getElementById('alert-mute-btn');
-    const icon = document.getElementById('alert-mute-icon');
-    btn.classList.toggle('muted', _alertMuted);
-    icon.className = _alertMuted ? 'fa-solid fa-bell-slash' : 'fa-solid fa-bell';
-    // Warm the AudioContext on unmute (this IS a user gesture)
-    if (!_alertMuted) {
-        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (_audioCtx.state === 'suspended') _audioCtx.resume();
-        _playAlertChime('warning'); // confirm audio is working
-    } else {
-        if (_pagerVibrateHandle) { clearInterval(_pagerVibrateHandle); _pagerVibrateHandle = null; }
-        if (navigator.vibrate) navigator.vibrate(0); // cancel any active vibration
-    }
-}
-
-// ════════════════════════════════════════════════════════════════
-// ROTATING QR CODE
-// ════════════════════════════════════════════════════════════════
-let _qrInstance=null, _qrRotationInterval=null, _qrRingInterval=null, _qrRingSeconds=15;
-const QR_ROTATION_SECS=15, QR_CIRCUMFERENCE=2*Math.PI*15.9;
-
-function initQRRotation() {
-    _teardownQRRotation(); _renderQRFrame();
-    _qrRotationInterval = setInterval(()=>{ _renderQRFrame(); _resetRingCountdown(); }, QR_ROTATION_SECS*1000);
-    _resetRingCountdown();
-}
-function _renderQRFrame() {
-    const c=document.getElementById('qr-code-render'); c.innerHTML='';
-    _qrInstance = new QRCode(c,{text:`${myTicketNumber}:${Math.floor(Date.now()/1000)}`,
-        width:128,height:128,colorDark:'#202124',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-}
-function _resetRingCountdown() {
-    if (_qrRingInterval) clearInterval(_qrRingInterval);
-    _qrRingSeconds=QR_ROTATION_SECS; _updateRingUI(_qrRingSeconds);
-    _qrRingInterval=setInterval(()=>{ _qrRingSeconds--; _updateRingUI(_qrRingSeconds); if(_qrRingSeconds<=0)clearInterval(_qrRingInterval); },1000);
-}
-function _updateRingUI(s) {
-    const arc=document.getElementById('qr-ring-arc'),lbl=document.getElementById('qr-ring-label');
-    if(!arc||!lbl)return;
-    arc.style.strokeDasharray=`${QR_CIRCUMFERENCE} ${QR_CIRCUMFERENCE}`;
-    arc.style.strokeDashoffset=QR_CIRCUMFERENCE*(1-s/QR_ROTATION_SECS);
-    lbl.innerText=s;
-}
-function _teardownQRRotation() {
-    if(_qrRotationInterval){clearInterval(_qrRotationInterval);_qrRotationInterval=null;}
-    if(_qrRingInterval){clearInterval(_qrRingInterval);_qrRingInterval=null;}
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// ANTI-SCALPER ENGINE
-// ════════════════════════════════════════════════════════════════
-function isTransferLocked() {
-    if (!CONFIG.EVENT_LAUNCH_TIME) return {locked:true,reason:'Drop is live — transfers are disabled.'};
-    const ms = CONFIG.EVENT_LAUNCH_TIME.getTime()-Date.now();
-    if (ms<=0) return {locked:true,reason:'Drop is live — transfers are disabled.'};
-    const mins = ms/60000;
-    if (mins<=CONFIG.TRANSFER_LOCKOUT_MINS)
-        return {locked:true,reason:`Transfers locked — drop starts in ${Math.ceil(mins)} mins.`};
-    return {locked:false,reason:''};
-}
-
-function syncTransferLockState() {
-    if (!myTicketNumber) return;
-    const {locked,reason}=isTransferLocked();
-    const banner=document.getElementById('transfer-cooldown-banner');
-    const bannerT=document.getElementById('transfer-cooldown-text');
-    const xferBtn=document.querySelector('[onclick="openTransferModal()"]');
-    const swapBtn=document.querySelector('[onclick="openSwapModal()"]');
-    if (locked) {
-        banner.classList.add('visible'); bannerT.innerText=reason;
-        [xferBtn,swapBtn].forEach(b=>{if(!b)return;b.style.opacity='0.4';b.style.pointerEvents='none';b.setAttribute('aria-disabled','true');});
-    } else {
-        banner.classList.remove('visible');
-        [xferBtn,swapBtn].forEach(b=>{if(!b)return;b.style.opacity='';b.style.pointerEvents='';b.removeAttribute('aria-disabled');});
-    }
-}
-
-function flagTicket(ticketNumber, deviceId, reason) {
-    const refCode = `FLAG-${ticketNumber}-${deviceId.slice(-4).toUpperCase()}`;
-    const entry   = {ticket:ticketNumber, deviceId, reason, refCode, timestamp:_nowStr()};
-    if (!FLAGGED_TICKETS.some(f=>f.ticket===ticketNumber&&f.reason===reason)) {
-        FLAGGED_TICKETS.push(entry);
-        console.warn(`[Flag] #${ticketNumber}: ${reason} (${refCode})`);
-    }
-    if (ticketNumber===myTicketNumber||myTicketNumber===null) _showSuspiciousActivityNotice(reason,refCode);
-    renderFlaggedPanel(); _updateStaffStats();
-}
-
-function _showSuspiciousActivityNotice(reason, refCode) {
-    const notice=document.getElementById('suspicious-activity-notice');
-    const bodyEl=document.getElementById('san-body-text');
-    const refEl=document.getElementById('san-ref-code');
-    if (reason.includes('already holds'))
-        bodyEl.innerText="Our system detected this device is already associated with one or more tickets. If you're holding a spot for a friend, just show this notice to staff at the entrance.";
-    else if (reason.includes('TOTP')||reason.includes('strike'))
-        bodyEl.innerText="There were multiple failed identity verification attempts on this ticket. Your spot is still held — please speak to a staff member at the gate who can verify you manually.";
-    else
-        bodyEl.innerText="Our system flagged unusual activity on this device. This may be a false positive. A staff member can clear this for you immediately at the entrance.";
-    refEl.innerHTML=`<i class="fa-solid fa-barcode mr-1"></i>Reference: <strong>${refCode}</strong>`;
-    notice.classList.add('visible');
-}
-
-function showFlagHelpInfo() {
-    const ref=document.getElementById('san-ref-code').innerText.replace('Reference:','').trim();
-    alert(`Account Review — What this means:\n\nOur queue system uses automatic checks to keep things fair. Your device triggered one of these checks, which is sometimes a false positive.\n\nWhat to do:\n→ Keep this screen open and proceed to the entrance.\n→ Show your ticket and this notice to any staff member.\n→ They can look up your reference code and clear it in seconds.\n\nYour spot is still held — this notice does NOT cancel your place in line.\n\n${ref}`);
-}
-
-function renderFlaggedPanel() {
-    const list=document.getElementById('flagged-tickets-list');
-    const empty=document.getElementById('flagged-empty-state');
-    const badge=document.getElementById('flag-count-badge');
-    if(!list)return;
-    badge.innerText=FLAGGED_TICKETS.length;
-    if(!FLAGGED_TICKETS.length){list.innerHTML='';list.appendChild(empty);empty.style.display='block';return;}
-    empty.style.display='none';
-    list.innerHTML=FLAGGED_TICKETS.map((f,i)=>`
-        <div class="flagged-ticket-row">
-            <div class="flag-info">
-                <div class="flag-num"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1 text-xs"></i>Ticket #${f.ticket}</div>
-                <div class="flag-reason">${f.reason}</div>
-                <div class="flag-reason" style="color:#9ca3af;margin-top:2px;font-family:monospace;">${f.refCode} · ${f.timestamp}</div>
-                <div class="flag-reason" style="color:#d1d5db;font-size:9px;">Device: ${f.deviceId}</div>
+<!-- ══ TENANT LOGIN MODAL ══
+     Shown when organizer taps "Admin Portal" for the first time with no
+     active session. Email + access-token flow; Supabase Auth in production.
+══ -->
+<div id="tenant-login-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="tenant-login-card">
+
+        <!-- Logo ring — dynamically recoloured per tenant -->
+        <div class="tenant-logo-ring" id="tl-logo-ring">Q</div>
+
+        <h2 class="text-center text-lg font-bold text-gray-900 mb-1">Organizer Login</h2>
+        <p class="text-center text-xs text-gray-400 mb-5">Sign in to access your event dashboard.</p>
+
+        <!-- Email -->
+        <div class="mb-3">
+            <label class="block text-xs font-semibold text-gray-500 mb-1.5">Work Email</label>
+            <input type="email" id="tl-email" placeholder="you@brand.com" class="tenant-input"
+                   autocomplete="email" oninput="onTenantEmailInput(this)">
+        </div>
+
+        <!-- Password / Access Token -->
+        <div class="mb-1">
+            <label class="block text-xs font-semibold text-gray-500 mb-1.5">Password or Access Token</label>
+            <div class="relative">
+                <input type="password" id="tl-password" placeholder="••••••••••••" class="tenant-input pr-10"
+                       autocomplete="current-password" onkeydown="if(event.key==='Enter')submitTenantLogin()">
+                <button onclick="toggleTLPasswordVis()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">
+                    <i class="fa-solid fa-eye" id="tl-eye-icon"></i>
+                </button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-                <button class="flag-action-btn flag-action-approve" onclick="clearFlag(${i})"><i class="fa-solid fa-check mr-1"></i>Approve</button>
-                <button class="flag-action-btn flag-action-dismiss" onclick="dismissFlag(${i})"><i class="fa-solid fa-xmark mr-1"></i>Revoke</button>
+        </div>
+
+        <!-- Remember session checkbox -->
+        <div class="flex items-center gap-2 mb-4 mt-3">
+            <input type="checkbox" id="tl-remember" class="rounded" checked>
+            <label for="tl-remember" class="text-xs text-gray-500 cursor-pointer">Keep me signed in on this device</label>
+        </div>
+
+        <!-- Error message -->
+        <div id="tl-error" class="hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 text-xs text-red-700 flex items-center gap-2">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <span id="tl-error-text">Invalid credentials.</span>
+        </div>
+
+        <button onclick="submitTenantLogin()" class="tenant-btn-primary mb-3" id="tl-submit-btn">
+            <i class="fa-solid fa-right-to-bracket mr-2"></i>Sign In to Dashboard
+        </button>
+
+        <!-- Demo tenant switcher — remove in production -->
+        <div class="border-t border-gray-100 pt-3 mt-1">
+            <p class="text-[10px] text-gray-400 text-center mb-2 uppercase tracking-wider font-semibold">Demo Tenants</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="loginAsDemoTenant('stript')"
+                    class="safari-clickable text-xs bg-gray-900 text-white rounded-lg py-2 font-semibold hover:bg-gray-800 transition">
+                    🏷 Stript Drop
+                </button>
+                <button onclick="loginAsDemoTenant('matcha')"
+                    class="safari-clickable text-xs bg-emerald-700 text-white rounded-lg py-2 font-semibold hover:bg-emerald-800 transition">
+                    🍵 Matcha Shop
+                </button>
             </div>
-        </div>`).join('');
-}
+        </div>
 
-function clearFlag(i) {
-    const f=FLAGGED_TICKETS[i]; FLAGGED_TICKETS.splice(i,1);
-    if(!FLAGGED_TICKETS.some(fl=>fl.ticket===myTicketNumber))
-        document.getElementById('suspicious-activity-notice').classList.remove('visible');
-    staffOverrideLog.push({time:_nowStr(),msg:`✓ Ticket #${f.ticket} cleared by staff`,type:'ok'});
-    _renderStaffLog(); renderFlaggedPanel(); _updateStaffStats();
-}
+    </div>
+</div>
 
-function dismissFlag(i) {
-    const f=FLAGGED_TICKETS[i]; FLAGGED_TICKETS.splice(i,1);
-    if(DEVICE_REGISTRY[f.deviceId]) DEVICE_REGISTRY[f.deviceId]=DEVICE_REGISTRY[f.deviceId].filter(t=>t!==f.ticket);
-    staffOverrideLog.push({time:_nowStr(),msg:`✗ Ticket #${f.ticket} revoked by staff`,type:'warn'});
-    _renderStaffLog(); renderFlaggedPanel(); _updateStaffStats();
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// TRANSFER & SWAP
-// ════════════════════════════════════════════════════════════════
-function openTransferModal()  { document.getElementById('transfer-modal').classList.remove('hidden'); document.getElementById('transfer-recipient-input').value=''; document.getElementById('transfer-status-msg').classList.add('hidden'); }
-function closeTransferModal() { document.getElementById('transfer-modal').classList.add('hidden'); }
-function openSwapModal()      { document.getElementById('swap-modal').classList.remove('hidden'); document.getElementById('swap-target-input').value=''; document.getElementById('swap-status-msg').classList.add('hidden'); }
-function closeSwapModal()     { document.getElementById('swap-modal').classList.add('hidden'); }
-
-document.getElementById('transfer-modal').addEventListener('click',function(e){if(e.target===this)closeTransferModal();});
-document.getElementById('swap-modal').addEventListener('click',function(e){if(e.target===this)closeSwapModal();});
-
-async function initiateTransfer() {
-    const recipient=document.getElementById('transfer-recipient-input').value.trim();
-    const statusMsg=document.getElementById('transfer-status-msg');
-    const {locked,reason}=isTransferLocked();
-    if(locked){statusMsg.innerText=reason;statusMsg.classList.remove('hidden');return;}
-    if(!recipient){statusMsg.innerText='Please enter a recipient ID or email.';statusMsg.classList.remove('hidden');return;}
-
-    // Seed re-issuance: old secret invalidated, recipient gets a fresh setup flow
-    // Production: Supabase RPC generates new secret server-side, emails recipient a setup link.
-    myTOTPSecret=generateTOTPSecret(); // new seed — old one is now cryptographically dead
-    totpSetupVerified=false; mfaGatePassed=false;
-    document.getElementById('mfa-verified-badge').classList.remove('visible');
-    console.log(`[Transfer] Old TOTP seed invalidated. New seed issued for recipient. Ticket #${myTicketNumber} → ${recipient}`);
-
-    await new Promise(r=>setTimeout(r,500));
-    alert(`Transfer request sent.\nTicket #${myTicketNumber} → ${recipient}\n\nA fresh authenticator setup link has been sent to the recipient.\nYour previous TOTP seed has been permanently invalidated.`);
-    closeTransferModal();
-}
-
-async function proposeSwap() {
-    const target=parseInt(document.getElementById('swap-target-input').value,10);
-    const statusMsg=document.getElementById('swap-status-msg');
-    const {locked,reason}=isTransferLocked();
-    if(locked){statusMsg.innerText=reason;statusMsg.classList.remove('hidden');return;}
-    if(!target||target<1){statusMsg.innerText='Enter a valid ticket number.';statusMsg.classList.remove('hidden');return;}
-    if(target===myTicketNumber){statusMsg.innerText="You can't swap with your own ticket.";statusMsg.classList.remove('hidden');return;}
-    await new Promise(r=>setTimeout(r,500));
-    alert(`Swap proposal sent.\n#${myTicketNumber} ↔ #${target}\n\nBoth spots are in escrow. Each party will receive a fresh TOTP seed after the swap is accepted.`);
-    closeSwapModal();
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// ADMIN & UTILITIES
-// ════════════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════════════
-// ADMIN DASHBOARD — LINE FLOW CONTROLS + ANALYTICS
-// ════════════════════════════════════════════════════════════════
-
-function toggleQueuePause() {
-    _analytics.queuePaused = !_analytics.queuePaused;
-    const btn   = document.getElementById('pause-queue-btn');
-    const icon  = document.getElementById('pause-icon');
-    const label = document.getElementById('pause-label');
-    const badge = document.getElementById('queue-paused-badge');
-    if (_analytics.queuePaused) {
-        btn.style.background = '#16a34a'; icon.className = 'fa-solid fa-play'; label.innerText = 'Resume Queue';
-        badge.classList.remove('hidden');
-        _showToast('Queue paused — no line progression until resumed.', 'amber');
-    } else {
-        btn.style.background = ''; icon.className = 'fa-solid fa-pause'; label.innerText = 'Pause Queue';
-        badge.classList.add('hidden');
-        _showToast('Queue resumed.', 'green');
-    }
-    if (myTicketNumber) syncUIElements();
-}
-
-function flushDeadTickets() {
-    const threshold  = _analytics.deadTicketThresholdMins;
-    const cutoffTicket = globalCurrentServing - Math.floor(threshold / 3);
-    let flushed = 0;
-    for (const deviceId in DEVICE_REGISTRY) {
-        const before = DEVICE_REGISTRY[deviceId].length;
-        DEVICE_REGISTRY[deviceId] = DEVICE_REGISTRY[deviceId].filter(t => t >= cutoffTicket);
-        flushed += before - DEVICE_REGISTRY[deviceId].length;
-        if (!DEVICE_REGISTRY[deviceId].length) delete DEVICE_REGISTRY[deviceId];
-    }
-    _updateAnalyticsDisplay();
-    _showToast(flushed > 0
-        ? `Flushed ${flushed} dead ticket${flushed!==1?'s':''} (called >${threshold} mins ago).`
-        : 'No dead tickets found — queue is clean.', flushed > 0 ? 'amber' : 'green');
-}
-
-function applyBrandSettings() {
-    const name     = document.getElementById('cfg-location-name').value.trim();
-    const cap      = parseInt(document.getElementById('cfg-max-capacity').value, 10);
-    const deadMins = parseInt(document.getElementById('cfg-dead-threshold').value, 10);
-    if (name) {
-        CONFIG.DROP_LOCATION_NAME = name;
-        const dn = document.getElementById('admin-drop-name-display');
-        const ds = document.getElementById('admin-drop-subtitle');
-        if (dn) dn.innerText = name;
-        if (ds) ds.innerText = 'Live Drop Controller · ' + name;
-        document.getElementById('footer-location-text').innerText =
-            `${name} · Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi)`;
-    }
-    if (!isNaN(cap) && cap > 0) CONFIG.MAX_CAPACITY = cap;
-    if (!isNaN(deadMins) && deadMins > 0) {
-        _analytics.deadTicketThresholdMins = deadMins;
-        const lbl = document.getElementById('dead-threshold-label');
-        if (lbl) lbl.innerText = deadMins;
-    }
-    _showToast('Brand settings applied.', 'green');
-}
-
-function _updateAnalyticsDisplay() {
-    const allTickets = Object.values(DEVICE_REGISTRY).flat();
-    _analytics.totalCheckedIn  = allTickets.length;
-    _analytics.activeGeofenced = allTickets.filter(t => t >= globalCurrentServing).length;
-    const ciEl = document.getElementById('stat-checked-in');
-    const gfEl = document.getElementById('stat-geofenced');
-    const atEl = document.getElementById('stat-avg-time');
-    if (ciEl) ciEl.innerText = _analytics.totalCheckedIn;
-    if (gfEl) gfEl.innerText = _analytics.activeGeofenced;
-    if (atEl) atEl.innerText = _analytics._processingTimes.length
-        ? Math.round(_analytics._processingTimes.reduce((a,b)=>a+b,0) / _analytics._processingTimes.length)
-        : '--';
-}
-
-function recordProcessingTime(seconds) {
-    _analytics._processingTimes.push(seconds);
-    if (_analytics._processingTimes.length > 20) _analytics._processingTimes.shift();
-    _updateAnalyticsDisplay();
-}
-
-// ════════════════════════════════════════════════════════════════
-// ADMIN AUTH GATE
-// ════════════════════════════════════════════════════════════════
-// Explicit view-state flag — never sniff classList to decide direction.
-// This was the root cause of the "can't reopen admin" bug: classList
-// could get out of sync with reality after test-case resets.
-let _adminViewOpen   = false;
-let _adminAuthed     = false;   // survives for the tab session once passed
-let _adminAuthFailed = 0;       // consecutive wrong codes this session
-
-// Demo admin TOTP secret. In production: provisioned per-event in Supabase,
-// shared with staff via a secure internal channel only.
-const ADMIN_SECRET = 'MFRGGZDFMZTWQ2LK';
-
-function toggleAdminMode() {
-    if (_adminViewOpen) {
-        _saveAdminSettings();
-        _setAdminView(false);
-    } else {
-        // Require staff auth before opening — once authed per session, skip modal
-        _adminAuthed ? _openAdminPanel() : _openAdminAuthModal();
-    }
-}
-
-function _setAdminView(open) {
-    _adminViewOpen = open;
-    const cust = document.getElementById('customer-view');
-    const adm  = document.getElementById('admin-view');
-    const nav  = document.getElementById('nav-title');
-    if (open) {
-        cust.classList.add('hidden');
-        adm.classList.remove('hidden');
-        nav.innerText = 'Queue Admin Panel';
-    } else {
-        adm.classList.add('hidden');
-        cust.classList.remove('hidden');
-        nav.innerText = 'Store Queue System';
-    }
-}
-
-function _openAdminPanel() {
-    // Populate brand inputs with current values
-    const nameEl = document.getElementById('cfg-location-name');
-    const capEl  = document.getElementById('cfg-max-capacity');
-    const deadEl = document.getElementById('cfg-dead-threshold');
-    if (nameEl) nameEl.value = CONFIG.DROP_LOCATION_NAME || '';
-    if (capEl)  capEl.value  = CONFIG.MAX_CAPACITY || 200;
-    if (deadEl) deadEl.value = _analytics.deadTicketThresholdMins || 10;
-    _updateAnalyticsDisplay();
-    if (CONFIG.EVENT_LAUNCH_TIME) {
-        const pad = n => String(n).padStart(2,'0'), d = CONFIG.EVENT_LAUNCH_TIME;
-        document.getElementById('cfg-launch-time').value =
-            `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        document.getElementById('cfg-launch-preview-text').innerText =
-            `Drop set for ${d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric',year:'numeric'})} at ${d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
-        document.getElementById('cfg-launch-preview').classList.remove('hidden');
-    }
-    const ls = document.getElementById('cfg-lockout-mins');
-    if (ls) ls.value = CONFIG.TRANSFER_LOCKOUT_MINS;
-    renderFlaggedPanel();
-    _setAdminView(true);
-}
-
-function _saveAdminSettings() {
-    CONFIG.STORE_LAT            = parseFloat(document.getElementById('cfg-lat').value);
-    CONFIG.STORE_LON            = parseFloat(document.getElementById('cfg-lon').value);
-    CONFIG.ALLOWED_RADIUS_MILES = parseFloat(document.getElementById('cfg-radius').value);
-    const lv = document.getElementById('cfg-launch-time').value;
-    CONFIG.EVENT_LAUNCH_TIME    = lv ? new Date(lv) : null;
-    CONFIG.TRANSFER_LOCKOUT_MINS = parseInt(document.getElementById('cfg-lockout-mins').value, 10);
-    updateLocationStatusFooter();
-    if (myTicketNumber) {
-        _clearWaitCountdown();
-        if (_preLaunchInterval) { clearInterval(_preLaunchInterval); _preLaunchInterval = null; }
-        syncUIElements();
-        syncTransferLockState();
-    }
-}
-
-function _openAdminAuthModal() {
-    // Render the admin setup QR every time the modal opens (idempotent)
-    _renderAdminSetupQR();
-    document.getElementById('admin-auth-input').value = '';
-    document.getElementById('admin-auth-input').className = 'totp-pin-input';
-    document.getElementById('admin-auth-input').disabled  = (_adminAuthFailed >= 5);
-    document.getElementById('admin-auth-error').classList.add('hidden');
-    document.getElementById('admin-auth-lockout').classList.add('hidden');
-    // First-time users land on Setup tab; returning staff land on Verify tab
-    switchAdminTab(_adminAuthed ? 'verify' : 'setup');
-    document.getElementById('admin-auth-modal').classList.remove('hidden');
-}
-function _closeAdminAuthModal() {
-    document.getElementById('admin-auth-modal').classList.add('hidden');
-}
-
-/**
- * switchAdminTab(tab)
- * Toggles between the 'setup' QR pane and the 'verify' code-entry pane.
- */
-function switchAdminTab(tab) {
-    const setupPane  = document.getElementById('admin-tab-setup');
-    const verifyPane = document.getElementById('admin-tab-verify');
-    const setupBtn   = document.getElementById('admin-tab-setup-btn');
-    const verifyBtn  = document.getElementById('admin-tab-verify-btn');
-    if (tab === 'setup') {
-        setupPane.classList.remove('hidden');  verifyPane.classList.add('hidden');
-        setupBtn.className  = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition bg-white text-slate-800 shadow-sm';
-        verifyBtn.className = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition text-gray-400';
-    } else {
-        verifyPane.classList.remove('hidden'); setupPane.classList.add('hidden');
-        verifyBtn.className = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition bg-white text-slate-800 shadow-sm';
-        setupBtn.className  = 'safari-clickable flex-1 text-xs font-semibold py-2 rounded-lg transition text-gray-400';
-        setTimeout(() => document.getElementById('admin-auth-input').focus(), 100);
-    }
-}
-
-/**
- * _renderAdminSetupQR()
- * Builds the otpauth:// URI for the admin secret and renders it as a
- * scannable QR code inside the Setup tab. Called each time the modal opens.
- */
-function _renderAdminSetupQR() {
-    const container = document.getElementById('admin-setup-qr');
-    if (!container) return;
-    container.innerHTML = '';
-    const uri = `otpauth://totp/${encodeURIComponent('QueueDrop Admin')}?secret=${ADMIN_SECRET}&issuer=${encodeURIComponent('QueueDrop')}&algorithm=SHA1&digits=6&period=30`;
-    new QRCode(container, {
-        text: uri, width: 160, height: 160,
-        colorDark: '#0f172a', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-    });
-    // Display grouped secret for manual entry fallback
-    const dispEl = document.getElementById('admin-secret-display');
-    if (dispEl) dispEl.innerText = ADMIN_SECRET.match(/.{1,4}/g).join(' ');
-}
-
-function onAdminPinInput(input) {
-    if (input.value.length === 6) submitAdminAuth();
-}
-async function submitAdminAuth() {
-    if (_adminAuthFailed >= 5) return;
-    const input  = document.getElementById('admin-auth-input').value.trim();
-    const pinEl  = document.getElementById('admin-auth-input');
-    const errEl  = document.getElementById('admin-auth-error');
-    const lockEl = document.getElementById('admin-auth-lockout');
-
-    const valid = await verifyTOTP(ADMIN_SECRET, input);
-    if (valid) {
-        _adminAuthed     = true;
-        _adminAuthFailed = 0;
-        pinEl.className  = 'totp-pin-input success';
-        errEl.classList.add('hidden');
-        setTimeout(() => { _closeAdminAuthModal(); _openAdminPanel(); }, 400);
-    } else {
-        _adminAuthFailed++;
-        pinEl.value = ''; pinEl.className = 'totp-pin-input error';
-        setTimeout(() => { pinEl.className = 'totp-pin-input'; }, 900);
-        if (_adminAuthFailed >= 5) {
-            pinEl.disabled = true;
-            errEl.classList.add('hidden');
-            lockEl.classList.remove('hidden');
-            console.warn('[AdminAuth] 5 failed attempts — session locked.');
-        } else {
-            const rem = 5 - _adminAuthFailed;
-            errEl.innerText = `Incorrect code. ${rem} attempt${rem!==1?'s':''} remaining.`;
-            errEl.classList.remove('hidden');
-        }
-    }
-}
-
-function adjustAdminCounter(amount) {
-    if (_analytics.queuePaused) {
-        _showToast('Queue is paused — resume before advancing.', 'amber'); return;
-    }
-    globalCurrentServing = Math.max(1, globalCurrentServing + amount);
-    document.getElementById('admin-serving-number').innerText = globalCurrentServing;
-    _updateAnalyticsDisplay();
-    if (myTicketNumber) syncUIElements();
-}
-function captureCurrentLocationAsAnchor(){if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{document.getElementById('cfg-lat').value=p.coords.latitude.toFixed(4);document.getElementById('cfg-lon').value=p.coords.longitude.toFixed(4);_GEO_ANCHOR.la=p.coords.latitude;_GEO_ANCHOR.lo=p.coords.longitude;});}
-function toggleMenuDemo(){alert('Navigation menu — system fully operational.');}
-function updateLocationStatusFooter(){document.getElementById('footer-location-text').innerText=`Geofence Active (${CONFIG.ALLOWED_RADIUS_MILES} mi radius)`;}
-function isEventLive(){return !CONFIG.EVENT_LAUNCH_TIME||Date.now()>=CONFIG.EVENT_LAUNCH_TIME.getTime();}
-function formatDuration(m){if(m<60)return`~${m} min${m!==1?'s':''}`;const h=Math.floor(m/60),r=m%60;return`~${h} hr${h!==1?'s':''}${r>0?` ${r} min${r!==1?'s':''}`:''}`; }
-function formatEstimatedTurnTime(m){const b=isEventLive()?Date.now():CONFIG.EVENT_LAUNCH_TIME.getTime();return`Est. ready at ${new Date(b+m*60000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;}
-function pad2(n){return String(n).padStart(2,'0');}
-function _nowStr(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
-
-function startPreLaunchCountdown(){
-    const block=document.getElementById('prelaunck-countdown-block'),ld=CONFIG.EVENT_LAUNCH_TIME;
-    document.getElementById('pl-go-live-label').innerText=ld.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})+' · '+ld.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-    block.classList.remove('hidden');
-    if(_preLaunchInterval)clearInterval(_preLaunchInterval);
-    function tick(){const diff=ld.getTime()-Date.now();if(diff<=0){clearInterval(_preLaunchInterval);_preLaunchInterval=null;block.classList.add('hidden');syncUIElements();return;}const ts=Math.floor(diff/1000);document.getElementById('pl-days').innerText=pad2(Math.floor(ts/86400));document.getElementById('pl-hours').innerText=pad2(Math.floor((ts%86400)/3600));document.getElementById('pl-mins').innerText=pad2(Math.floor((ts%3600)/60));document.getElementById('pl-secs').innerText=pad2(ts%60);}
-    tick();_preLaunchInterval=setInterval(tick,1000);
-}
-
-function _showToast(message,color='green'){
-    const existing=document.getElementById('_toast');if(existing)existing.remove();
-    const colors={green:'color:#166534;background:#dcfce7;border:1px solid #bbf7d0',amber:'color:#92400e;background:#fffbeb;border:1px solid #fcd34d',red:'color:#991b1b;background:#fee2e2;border:1px solid #fecaca'};
-    const t=document.createElement('div');t.id='_toast';
-    t.style.cssText=`position:fixed;bottom:80px;left:50%;transform:translateX(-50%);${colors[color]};padding:10px 18px;border-radius:12px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.12);max-width:320px;text-align:center;`;
-    t.innerText=message;document.body.appendChild(t);
-    setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3500);
-}
-
-
-// ════════════════════════════════════════════════════════════════
-// TEST CASES
-// ════════════════════════════════════════════════════════════════
-async function runTestCase(type) {
-    const output=document.getElementById('test-output');
-    output.classList.remove('hidden');
-    function log(msg,color='#4ade80'){output.innerHTML+=`<span style="color:${color}">${msg}</span>\n`;output.scrollTop=output.scrollHeight;}
-
-    if(type==='clear'){
-        FLAGGED_TICKETS=[];DEVICE_REGISTRY={};myTicketNumber=null;myTOTPSecret=null;
-        totpSetupVerified=false;mfaGatePassed=false;gateStrikes=0;
-        staffOverrideCount=0;staffOkCount=0;staffOverrideLog=[];
-        output.innerHTML='';log('✓ All test state cleared. Flags: 0  |  Device registry: empty','#94a3b8');
-        renderFlaggedPanel();_updateStaffStats();return;
-    }
-
-    if(type==='device_cap'){
-        output.innerHTML='';
-        log('═══ TEST 1: Device Cap Exceeded (Scalper Scenario) ═══\n','#a78bfa');
-        log('Simulating device fingerprint: dev_abc123');
-        log('Issuing ticket #52 to dev_abc123...');
-        DEVICE_REGISTRY['dev_abc123']=[52];
-        log('✓ Ticket #52 registered.\n');
-        log('Issuing ticket #53 (2nd — within cap of 2)...');
-        DEVICE_REGISTRY['dev_abc123'].push(53);
-        log('✓ Ticket #53 registered.\n');
-        log('Attempting ticket #54 (3rd — exceeds cap) ⚠','#fbbf24');
-        await new Promise(r=>setTimeout(r,400));
-        flagTicket(52,'dev_abc123','Check-in blocked: device already holds 2 ticket(s) (cap: 2)');
-        log('✗ Check-in BLOCKED. Flag raised.','#f87171');
-        log(`  → Flagged tickets: ${FLAGGED_TICKETS.length}`);
-        log('  → Customer sees: amber "Account Review Required" notice');
-        log('  → Admin "Flagged Tickets" badge now shows 1');
-        log('\n→ Scroll up and open Admin Portal to see the live flag row. ✓','#a78bfa');
-    }
-
-    if(type==='totp_fail'){
-        output.innerHTML='';
-        log('═══ TEST 2: TOTP 3-Strike Gate Lockout ═══\n','#a78bfa');
-        const testTicket=47, testSecret=generateTOTPSecret();
-        log(`Ticket #${testTicket} checked in.`);
-        log(`TOTP secret generated: ${testSecret.slice(0,4)}****`);
-        log('Customer sets up Google Authenticator — verified ✓\n');
-        for(let strike=1;strike<=3;strike++){
-            const bad=String(Math.floor(Math.random()*1000000)).padStart(6,'0');
-            log(`Attempt ${strike}/3 — entering wrong code: ${bad}`,'#fbbf24');
-            const valid=await verifyTOTP(testSecret,bad);
-            log(`  ${valid?'✓ (coincidental match — re-running)':'✗ Code rejected.'}`,valid?'#4ade80':'#f87171');
-            if(strike===3&&!valid){
-                log('\n  ✗ 3 strikes — LOCKOUT triggered.','#f87171');
-                flagTicket(testTicket,DEVICE_ID,`Gate TOTP failed 3x — manual review required`);
-                log(`  → Ticket #${testTicket} flagged for manual review.`);
-                log('  → Customer sees TOTP-specific amber notice + reference code.');
-                staffOverrideLog.push({time:_nowStr(),msg:`⚠ Test: Ticket #${testTicket} — 3-strike lockout`,type:'warn'});
-                staffOverrideCount++;_updateStaffStats();_renderStaffLog();
-            }
-            await new Promise(r=>setTimeout(r,300));
-        }
-        const realCode=await computeTOTP(testSecret);
-        log(`\nFor reference — current valid code for this secret: ${realCode}`,'#94a3b8');
-        log('A legitimate user with this code would be approved instantly.\n');
-        log('→ Open Admin Portal to see the flag. Open Staff Terminal to see override log. ✓','#a78bfa');
-    }
-
-    if(type==='admin_setup'){
-        output.innerHTML='';
-        log('═══ ADMIN PORTAL SETUP (Staff Onboarding) ═══\n','#a78bfa');
-        log('The Admin Portal requires Google Authenticator, just like gate MFA.\n');
-        log('Step 1 — Open Google Authenticator on your staff device.');
-        log('Step 2 — Tap "+" → "Enter a setup key" and enter:');
-        log('\n  Account name : QueueDrop Admin');
-        log('  Your key     : MFRG GZDF MZTW Q2LK');
-        log('  Type         : Time based\n','#fbbf24');
-        log('Step 3 — Tap "Add". The entry appears as "QueueDrop Admin".');
-        log('Step 4 — Return here and tap "Admin Portal".');
-        log('Step 5 — Enter the current 6-digit code shown in the app.\n');
-        log('Once verified, the session stays open for this browser tab.');
-        log('Closing and reopening the tab requires re-authentication.\n');
-        log('Production note: In a real deployment the ADMIN_SECRET is','#94a3b8');
-        log('provisioned per-event in Supabase and delivered to staff','#94a3b8');
-        log('via a secure internal channel — never hardcoded like this demo.','#94a3b8');
-        return;
-    }
-
-    if(type==='transfer_seed'){
-        output.innerHTML='';
-        log('═══ TEST 3: Transfer → TOTP Seed Re-Issuance ═══\n','#a78bfa');
-        const ticket=61, aliceSecret=generateTOTPSecret();
-        log(`Ticket #${ticket} issued to Alice.`);
-        log(`Alice TOTP seed: ${aliceSecret.slice(0,4)}**** (in Google Authenticator)`);
-        log('Alice completes setup — verified ✓\n');
-        await new Promise(r=>setTimeout(r,400));
-        log('Alice initiates transfer to Bob (bob@example.com)...','#fbbf24');
-        await new Promise(r=>setTimeout(r,500));
-        const bobSecret=generateTOTPSecret();
-        log(`\n  OLD seed (${aliceSecret.slice(0,4)}****) → INVALIDATED immediately.`);
-        log(`  NEW seed (${bobSecret.slice(0,4)}****) → Generated for Bob.`);
-        log('  Bob receives authenticator setup QR via email/link.');
-        log('  Bob scans into Google Authenticator.\n');
-        log('Simulating gate entry — Alice tries to use her OLD code:');
-        const aliceCode=await computeTOTP(aliceSecret);
-        const aliceValid=await verifyTOTP(bobSecret,aliceCode);
-        log(`  Alice code (${aliceCode}) vs new seed → ${aliceValid?'✓ (rare coincidence)':'✗ REJECTED (seed mismatch)'}`,aliceValid?'#4ade80':'#f87171');
-        log('\nBob uses his NEW code at the gate:');
-        const bobCode=await computeTOTP(bobSecret);
-        const bobValid=await verifyTOTP(bobSecret,bobCode);
-        log(`  Bob code (${bobCode}) vs new seed → ${bobValid?'✓ ACCEPTED — Bob enters':'✗'}`,bobValid?'#4ade80':'#f87171');
-        log('\n→ Transfer is cryptographically airtight. Old holder cannot gate-crash. ✓','#a78bfa');
-    }
-}
-</script>
 
 <!-- ══ ADMIN AUTH MODAL ══ -->
 <div id="admin-auth-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
@@ -2008,6 +700,20 @@ async function runTestCase(type) {
 
     </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT MODULES — load order matters:
+     1. queue.js   — CONFIG, state, ticket lifecycle, velocity engine, no-show loop
+     2. crypto.js  — TOTP, QR rotation, HMAC signing
+     3. geo.js     — device fingerprint, haversine, GPS handlers
+     4. auth.js    — tenant login, admin gate, customer TOTP modals, pager
+     5. app.js     — UI state machine, syncUIElements, test cases
+═══════════════════════════════════════════════════════════ -->
+<script src="js/queue.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>

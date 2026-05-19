@@ -1,0 +1,343 @@
+/* ================================================================
+   styles.css — Queue SaaS
+   All custom styles, animations, and component classes.
+   Tailwind v4 (browser CDN) handles utility classes.
+   This file covers: layout primitives, animations, component
+   states, and multi-tenant theme variables.
+================================================================ */
+
+/* ── Base ─────────────────────────────────────────────────────── */
+body {
+    font-family: 'Product Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.safari-clickable {
+    cursor: pointer !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+}
+
+/* ── Multi-tenant CSS custom properties ──────────────────────── */
+/* Hydrated at runtime by auth.js → _applyTenantTheme() */
+:root {
+    --tenant-primary:    #1a73e8;
+    --tenant-primary-dk: #1557b0;
+    --tenant-bg:         #f0f4ff;
+    --tenant-border:     #c7d4f5;
+    --tenant-text:       #1a1a2e;
+}
+
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes fadeIn   { from { opacity: 0; }                          to { opacity: 1; } }
+@keyframes slideUp  { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: .4; transform: scale(.7); }
+}
+@keyframes pager-pulse {
+    0%,100% { transform: scale(1);   opacity: 1;  box-shadow: 0 0 0 0   rgba(249,115,22,.6); }
+    50%     { transform: scale(1.3); opacity: .8;  box-shadow: 0 0 0 6px rgba(249,115,22,0); }
+}
+
+/* ── Modal overlay ────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(32,33,36,.6);
+    backdrop-filter: blur(5px);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    animation: fadeIn .18s ease;
+}
+.modal-overlay.hidden { display: none; }
+
+.modal-card {
+    background: #fff;
+    border-radius: 20px;
+    border: 1px solid #dadce0;
+    padding: 1.5rem;
+    width: 100%; max-width: 360px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.15);
+    animation: slideUp .22s ease;
+}
+
+/* ── QR ring ──────────────────────────────────────────────────── */
+#ticket-qr-container {
+    display: flex; flex-direction: column; align-items: center;
+    margin-bottom: 1.25rem;
+}
+#ticket-qr-container canvas,
+#ticket-qr-container img {
+    border-radius: 8px; border: 1px solid #dadce0;
+    padding: 6px; background: #fff;
+}
+.qr-ring-wrapper { position: relative; width: 36px; height: 36px; margin-top: 8px; }
+.qr-ring-svg     { transform: rotate(-90deg); width: 36px; height: 36px; }
+.qr-ring-track   { fill: none; stroke: #e8eaed; stroke-width: 3; }
+.qr-ring-progress {
+    fill: none; stroke: #1a73e8; stroke-width: 3;
+    stroke-linecap: round; transition: stroke-dashoffset 1s linear;
+}
+.qr-countdown-label {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 9px; font-weight: 700; color: #5f6368; font-family: monospace;
+}
+.qr-live-badge {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: #34A853; font-weight: 600;
+    margin-top: 4px; letter-spacing: .05em; text-transform: uppercase;
+}
+.qr-live-dot {
+    width: 6px; height: 6px; background: #34A853;
+    border-radius: 50%; animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* ── Wait time block ──────────────────────────────────────────── */
+#wait-time-block {
+    background: #f8f9fa; border: 1px solid #e8eaed;
+    border-radius: 12px; padding: .875rem 1rem;
+    margin-bottom: 1rem; text-align: center;
+}
+#wait-time-block .wt-label {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: .08em; color: #5f6368; font-weight: 600;
+}
+#wait-time-block .wt-value { font-size: 22px; font-weight: 700; color: #1a73e8; margin: 2px 0; }
+#wait-time-block .wt-sub   { font-size: 11px; color: #70757a; font-family: monospace; }
+
+/* ── Pre-launch countdown ─────────────────────────────────────── */
+#prelaunck-countdown-block {
+    background: linear-gradient(135deg,#f0f4ff,#fafafa);
+    border: 1px solid #c7d4f5; border-radius: 12px;
+    padding: .875rem 1rem; margin-top: .75rem; text-align: center;
+}
+#prelaunck-countdown-block .pl-label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: .1em; color: #5f6368; font-weight: 600; margin-bottom: 4px;
+}
+.pl-go-live-date  { font-size: 12px; font-weight: 600; color: #1a73e8; margin-bottom: 6px; }
+.pl-timer-digits  { display: flex; justify-content: center; align-items: flex-end; gap: 6px; }
+.pl-digit-unit    { display: flex; flex-direction: column; align-items: center; }
+.pl-digit-value   { font-size: 26px; font-weight: 800; color: #202124; line-height: 1; font-family: monospace; min-width: 2ch; }
+.pl-digit-label   { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: #80868b; margin-top: 2px; }
+.pl-digit-sep     { font-size: 22px; font-weight: 700; color: #dadce0; line-height: 1.1; padding-bottom: 6px; }
+
+/* ── Transfer cooldown banner ─────────────────────────────────── */
+#transfer-cooldown-banner {
+    display: none;
+    background: #fff7ed; border: 1px solid #fed7aa;
+    border-radius: 10px; padding: .625rem .875rem;
+    margin-top: .75rem; font-size: 11px; color: #9a3412;
+    text-align: center; font-weight: 500;
+}
+#transfer-cooldown-banner.visible { display: block; }
+
+/* ── Suspicious activity notice ──────────────────────────────── */
+#suspicious-activity-notice {
+    display: none; margin-top: 1rem;
+    background: #fffbeb; border: 1.5px solid #fcd34d;
+    border-radius: 14px; padding: 1rem; text-align: left;
+}
+#suspicious-activity-notice.visible { display: block; }
+.san-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.san-icon   { width: 28px; height: 28px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.san-title  { font-size: 13px; font-weight: 700; color: #92400e; }
+.san-body   { font-size: 12px; color: #78350f; line-height: 1.5; margin-bottom: 10px; }
+.san-ref    { font-size: 10px; color: #a16207; font-family: monospace; background: #fef9c3; border-radius: 6px; padding: 4px 8px; display: inline-block; margin-bottom: 10px; }
+.san-cta    {
+    display: flex; align-items: center; gap: 6px;
+    background: #92400e; color: #fff; font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px; border: none;
+    width: 100%; justify-content: center; cursor: pointer;
+    transition: background .15s; touch-action: manipulation;
+}
+.san-cta:hover { background: #78350f; }
+
+/* ── Flagged tickets panel ────────────────────────────────────── */
+.flagged-ticket-row {
+    background: #fff7ed; border: 1px solid #fed7aa;
+    border-radius: 10px; padding: .625rem .875rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.flagged-ticket-row .flag-info { flex: 1; }
+.flagged-ticket-row .flag-num  { font-weight: 700; color: #9a3412; font-size: 13px; }
+.flagged-ticket-row .flag-reason { font-size: 10px; color: #c2410c; margin-top: 1px; }
+.flag-action-btn     { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; border: none; transition: background .15s; }
+.flag-action-approve { background: #dcfce7; color: #166534; }
+.flag-action-approve:hover { background: #bbf7d0; }
+.flag-action-dismiss { background: #fee2e2; color: #991b1b; }
+.flag-action-dismiss:hover { background: #fecaca; }
+
+/* ── TOTP setup ───────────────────────────────────────────────── */
+.totp-setup-qr { display: flex; justify-content: center; margin: 1rem 0; }
+.totp-setup-qr canvas,
+.totp-setup-qr img { border-radius: 8px; border: 1px solid #e8eaed; }
+.totp-secret-display {
+    font-family: monospace; font-size: 13px; font-weight: 700;
+    letter-spacing: .15em; color: #1a73e8;
+    background: #f0f4ff; border: 1px solid #c7d4f5;
+    border-radius: 8px; padding: 8px 12px;
+    text-align: center; word-break: break-all;
+}
+
+/* ── TOTP gate verify ─────────────────────────────────────────── */
+.totp-pin-input {
+    font-size: 28px; font-weight: 800; letter-spacing: .3em;
+    text-align: center; font-family: monospace;
+    border: 2px solid #dadce0; border-radius: 12px;
+    padding: 12px; width: 100%; color: #202124;
+    outline: none; transition: border-color .15s;
+}
+.totp-pin-input:focus   { border-color: #1a73e8; }
+.totp-pin-input.error   { border-color: #ea4335; background: #fef2f2; }
+.totp-pin-input.success { border-color: #34a853; background: #f0fdf4; }
+.strike-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.strike-dot  { width: 8px; height: 8px; border-radius: 50%; background: #e8eaed; transition: background .2s; }
+.strike-dot.used { background: #ea4335; }
+
+/* ── MFA verified badge ───────────────────────────────────────── */
+#mfa-verified-badge {
+    display: none; align-items: center; justify-content: center; gap: 5px;
+    font-size: 10px; font-weight: 700; color: #166534;
+    background: #dcfce7; border: 1px solid #bbf7d0;
+    border-radius: 20px; padding: 4px 10px; margin-top: 6px;
+    text-transform: uppercase; letter-spacing: .05em;
+}
+#mfa-verified-badge.visible { display: inline-flex; }
+
+/* ── No-show / expired ticket banner ─────────────────────────── */
+#noshow-banner {
+    display: none; margin-top: 1rem;
+    background: #fefce8; border: 1.5px solid #fde047;
+    border-radius: 14px; padding: 1rem; text-align: center;
+}
+#noshow-banner.visible { display: block; }
+.noshow-title  { font-size: 14px; font-weight: 800; color: #854d0e; margin-bottom: 4px; }
+.noshow-body   { font-size: 12px; color: #713f12; line-height: 1.5; margin-bottom: 12px; }
+.noshow-requeue-btn {
+    background: #854d0e; color: #fff; border: none;
+    border-radius: 10px; padding: 10px 20px; font-size: 13px;
+    font-weight: 700; cursor: pointer; width: 100%;
+    transition: background .15s; touch-action: manipulation;
+}
+.noshow-requeue-btn:hover { background: #713f12; }
+
+/* ── Pager / haptic alert banner ─────────────────────────────── */
+#pager-banner { display: none; margin-bottom: 1rem; }
+#pager-banner.visible { display: block; }
+.pager-inner {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+    border: 1.5px solid #f97316; border-radius: 14px;
+    padding: .875rem 1rem; display: flex; align-items: center; gap: 10px;
+}
+.pager-dot {
+    width: 10px; height: 10px; flex-shrink: 0;
+    background: #f97316; border-radius: 50%;
+    animation: pager-pulse 0.8s ease-in-out infinite;
+}
+.pager-text          { flex: 1; }
+.pager-text strong   { font-size: 12px; color: #9a3412; display: block; }
+.pager-text span     { font-size: 10px; color: #c2410c; font-family: monospace; }
+
+/* ── Mute toggle FAB ──────────────────────────────────────────── */
+#alert-mute-btn {
+    position: fixed; bottom: 88px; right: 16px; z-index: 150;
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    background: #1e293b; color: #f8fafc; font-size: 16px;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    display: none; align-items: center; justify-content: center;
+    transition: background .15s;
+}
+#alert-mute-btn.visible { display: flex; }
+#alert-mute-btn.muted   { background: #6b7280; }
+
+/* ── Staff iPad view ──────────────────────────────────────────── */
+#staff-view {
+    display: none; min-height: 100vh; background: #0f172a;
+    flex-direction: column; align-items: center; justify-content: center; padding: 2rem;
+}
+#staff-view.active { display: flex; }
+.staff-pin-display {
+    font-size: 72px; font-weight: 900; letter-spacing: .25em;
+    font-family: monospace; color: #f8fafc;
+    text-shadow: 0 0 40px rgba(99,179,237,.4);
+    padding: 1.5rem 2rem; background: #1e293b;
+    border-radius: 20px; border: 2px solid #334155; margin: 1.5rem 0;
+}
+.staff-ring-outer  { position: relative; width: 80px; height: 80px; margin: 0 auto 1rem; }
+.staff-ring-svg    { transform: rotate(-90deg); width: 80px; height: 80px; }
+.staff-ring-track  { fill: none; stroke: #334155; stroke-width: 5; }
+.staff-ring-arc    { fill: none; stroke: #38bdf8; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.staff-ring-label  { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 18px; font-weight: 800; color: #94a3b8; font-family: monospace; }
+.staff-override-log {
+    width: 100%; max-width: 420px; max-height: 180px; overflow-y: auto;
+    background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+    padding: .75rem; margin-top: 1rem;
+}
+.override-log-row           { font-size: 11px; font-family: monospace; color: #94a3b8; padding: 3px 0; border-bottom: 1px solid #334155; }
+.override-log-row:last-child { border-bottom: none; }
+.log-warn { color: #fbbf24; }
+.log-ok   { color: #34d399; }
+
+/* ── Multi-tenant login card ──────────────────────────────────── */
+.tenant-login-card {
+    background: #fff; border-radius: 24px;
+    border: 1px solid #e2e8f0; padding: 2rem;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.12);
+    animation: slideUp .25s ease;
+}
+.tenant-logo-ring {
+    width: 56px; height: 56px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin: 0 auto 1rem;
+    background: var(--tenant-bg); border: 2px solid var(--tenant-border);
+    color: var(--tenant-primary); font-weight: 900;
+}
+.tenant-input {
+    width: 100%; border: 1.5px solid #e2e8f0; border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; outline: none;
+    transition: border-color .15s, box-shadow .15s; background: #fafafa;
+}
+.tenant-input:focus {
+    border-color: var(--tenant-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tenant-primary) 15%, transparent);
+    background: #fff;
+}
+.tenant-btn-primary {
+    width: 100%; background: var(--tenant-primary); color: #fff;
+    border: none; border-radius: 12px; padding: 12px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+.tenant-btn-primary:hover  { background: var(--tenant-primary-dk); }
+.tenant-btn-primary:active { transform: scale(.98); }
+
+/* ── Tenant context badge (header + admin strip) ──────────────── */
+.tenant-context-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--tenant-bg); border: 1px solid var(--tenant-border);
+    border-radius: 10px; padding: 6px 12px;
+}
+.tenant-color-dot  { width: 8px; height: 8px; border-radius: 50%; background: var(--tenant-primary); flex-shrink: 0; }
+.tenant-badge-name { font-size: 11px; font-weight: 700; color: var(--tenant-text); }
+.tenant-badge-role { font-size: 9px; color: #64748b; font-family: monospace; }
+
+/* ── Tenant sign-out button ───────────────────────────────────── */
+#tenant-signout-btn {
+    font-size: 10px; color: #94a3b8;
+    background: none; border: none; cursor: pointer;
+    padding: 2px 6px; border-radius: 6px;
+    transition: color .15s, background .15s;
+}
+#tenant-signout-btn:hover { color: #ef4444; background: #fee2e2; }
+
+/* ── Line velocity indicator (Sprint 5) ──────────────────────── */
+#velocity-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; font-family: monospace;
+    padding: 3px 8px; border-radius: 20px; margin-top: 4px;
+}
+#velocity-chip.fast   { background: #dcfce7; color: #166534; }
+#velocity-chip.medium { background: #fef9c3; color: #854d0e; }
+#velocity-chip.slow   { background: #fee2e2; color: #991b1b; }
