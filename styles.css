@@ -20,9 +20,11 @@ body {
 .menu-drawer {
     transform: translateX(100%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none; /* prevent off-screen drawer from eating clicks */
 }
 .menu-drawer.open {
     transform: translateX(0);
+    pointer-events: auto;
 }
 
 /* ── Multi-tenant CSS custom properties ──────────────────────── */

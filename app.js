@@ -262,6 +262,97 @@ window.menuOpenAdmin = menuOpenAdmin;
 
 
 // ════════════════════════════════════════════════════════════════
+// INFO MODALS — About / Privacy / Terms
+// ════════════════════════════════════════════════════════════════
+
+const INFO_CONTENT = {
+    about: {
+        title: 'About Queue',
+        icon:  'fa-solid fa-circle-info',
+        color: '#1a73e8',
+        bg:    '#eff6ff',
+        html: `
+            <p><strong class="text-gray-800">Queue</strong> is a secure, location-verified digital queue system built for limited-drop events — sneaker releases, streetwear drops, exclusive retail, and more.</p>
+            <p>Instead of a physical line, Queue lets you secure a numbered spot from your phone while you stay nearby. When your number is called, you verify your identity at the door and walk right in.</p>
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+                <div class="flex items-start gap-2"><i class="fa-solid fa-location-dot text-blue-500 mt-0.5 text-xs w-4"></i><span><strong class="text-gray-700">Geofenced check-in</strong> — only people physically present at the venue can claim a spot. No remote queue jumping.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-shield-halved text-blue-500 mt-0.5 text-xs w-4"></i><span><strong class="text-gray-700">TOTP identity gate</strong> — your ticket is cryptographically tied to your device. Staff verify a live 6-digit code at the door.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-ban text-blue-500 mt-0.5 text-xs w-4"></i><span><strong class="text-gray-700">Bot and scalper resistant</strong> — device caps, geofencing, and MFA work together to keep the line fair.</span></div>
+            </div>
+            <p class="text-xs text-gray-400 font-mono text-center pt-1">Queue · Secure Drop Access · v4</p>
+        `
+    },
+    privacy: {
+        title: 'Privacy Policy',
+        icon:  'fa-solid fa-shield-halved',
+        color: '#059669',
+        bg:    '#f0fdf4',
+        html: `
+            <p class="text-xs text-gray-400 font-mono">Effective: January 1, 2025</p>
+            <p>We believe your data belongs to you. Queue is designed to collect only what is strictly necessary to operate a fair, secure queue — nothing more.</p>
+            <div class="space-y-3">
+                <div class="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                    <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">What we collect</p>
+                    <ul class="space-y-1 text-xs text-gray-600">
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-circle text-gray-300 mt-1" style="font-size:5px"></i>An anonymous device identifier generated on your device — we never see your name or contact info.</li>
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-circle text-gray-300 mt-1" style="font-size:5px"></i>Your approximate GPS coordinates, sampled <strong>once</strong> at check-in to verify you are within the event zone.</li>
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-circle text-gray-300 mt-1" style="font-size:5px"></i>Your queue ticket number and timestamp for the duration of the event.</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                    <p class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">What we do NOT collect</p>
+                    <ul class="space-y-1 text-xs text-gray-600">
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-xmark text-red-300 mt-0.5 text-xs"></i>Name, email address, or phone number</li>
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-xmark text-red-300 mt-0.5 text-xs"></i>Payment or financial information</li>
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-xmark text-red-300 mt-0.5 text-xs"></i>Persistent location tracking</li>
+                        <li class="flex items-start gap-1.5"><i class="fa-solid fa-xmark text-red-300 mt-0.5 text-xs"></i>Browsing history or cross-site data</li>
+                    </ul>
+                </div>
+                <p class="text-xs text-gray-500">All queue data is session-based and expires after the event ends. We do not sell, rent, or share your information with third parties.</p>
+            </div>
+        `
+    },
+    terms: {
+        title: 'Terms of Use',
+        icon:  'fa-solid fa-file-lines',
+        color: '#7c3aed',
+        bg:    '#f5f3ff',
+        html: `
+            <p class="text-xs text-gray-400 font-mono">Last updated: January 1, 2025</p>
+            <p>By using Queue you agree to the following terms. Please read them carefully.</p>
+            <div class="space-y-3">
+                <div class="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2 text-xs text-gray-600">
+                    <p><strong class="text-gray-700">One ticket per device.</strong> Each device may hold a maximum of one active ticket per event. Attempting to claim multiple spots from the same device will result in a flag and queue removal.</p>
+                    <p><strong class="text-gray-700">Physical presence required.</strong> You must be within the event's geofenced zone at the time of check-in. Location spoofing is prohibited and will result in a permanent ban from the event.</p>
+                    <p><strong class="text-gray-700">Transfer window.</strong> Ticket transfers are permitted until the lockout window configured by the event organizer. After that, your ticket is non-transferable.</p>
+                    <p><strong class="text-gray-700">No-show policy.</strong> If your number is called and you do not check in at the gate within 8 minutes, your spot may be forfeited and reassigned. You will be placed at the back of the queue.</p>
+                    <p><strong class="text-gray-700">Fair use.</strong> Queue is provided to create a fair experience for all attendees. Any attempt to manipulate, automate, or exploit the system — including bots, GPS spoofing, or TOTP sharing — is grounds for immediate removal.</p>
+                    <p><strong class="text-gray-700">No guarantee of entry.</strong> Holding a queue ticket does not guarantee entry to an event. Entry is subject to capacity, organizer discretion, and compliance with these terms.</p>
+                </div>
+                <p class="text-xs text-gray-400">Queue is provided "as is" without warranty of any kind. The organizer and platform are not liable for lost queue positions due to device failure, connectivity issues, or circumstances outside their control.</p>
+            </div>
+        `
+    }
+};
+
+function openInfoModal(type) {
+    const data = INFO_CONTENT[type];
+    if (!data) return;
+    document.getElementById('info-modal-title').innerText = data.title;
+    document.getElementById('info-modal-icon').className  = data.icon + ' text-sm';
+    document.getElementById('info-modal-icon').style.color = data.color;
+    document.getElementById('info-modal-icon-wrap').style.background = data.bg;
+    document.getElementById('info-modal-body').innerHTML  = data.html;
+    document.getElementById('info-modal').classList.remove('hidden');
+}
+function closeInfoModal() {
+    document.getElementById('info-modal').classList.add('hidden');
+}
+window.openInfoModal  = openInfoModal;
+window.closeInfoModal = closeInfoModal;
+
+
+// ════════════════════════════════════════════════════════════════
 // TEST CASES (admin developer panel)
 // ════════════════════════════════════════════════════════════════
 
