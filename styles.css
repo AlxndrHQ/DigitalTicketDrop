@@ -18,13 +18,13 @@ body {
 
 /* ── Slide-out menu drawer ────────────────────────────────────── */
 .menu-drawer {
-    transform: translateX(100%);
+    transform: translateX(110%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none; /* prevent off-screen drawer from eating clicks */
+    visibility: hidden;  /* fully removes from hit-testing when closed */
 }
 .menu-drawer.open {
     transform: translateX(0);
-    pointer-events: auto;
+    visibility: visible;
 }
 
 /* ── Multi-tenant CSS custom properties ──────────────────────── */

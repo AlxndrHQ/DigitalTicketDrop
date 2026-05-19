@@ -242,23 +242,8 @@ function updateLocationStatusFooter() {
 }
 window.updateLocationStatusFooter = updateLocationStatusFooter;
 
-let _menuOpen = false;
-
-function toggleMenu() {
-    _menuOpen = !_menuOpen;
-    const overlay = document.getElementById('menu-overlay');
-    const drawer  = document.getElementById('menu-drawer');
-    overlay.classList.toggle('hidden', !_menuOpen);
-    drawer.classList.toggle('open', _menuOpen);
-}
-
-function menuOpenAdmin() {
-    toggleMenu();
-    if (window.toggleAdminMode) window.toggleAdminMode();
-}
-
-window.toggleMenu    = toggleMenu;
-window.menuOpenAdmin = menuOpenAdmin;
+// toggleMenu / menuOpenAdmin / closeInfoModal are defined inline in <head>.
+// openInfoModal is registered below after INFO_CONTENT is built.
 
 
 // ════════════════════════════════════════════════════════════════
