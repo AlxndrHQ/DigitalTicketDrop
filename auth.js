@@ -102,13 +102,11 @@ function _applyTenantContext(tenant, skipSave = false) {
 
     _applyTenantTheme(tenant.theme_color);
 
-    // Header badge
-    const badge   = document.getElementById('tenant-header-badge');
-    const bname   = document.getElementById('tenant-badge-name');
-    const signout = document.getElementById('tenant-signout-btn');
-    if (badge)   badge.classList.remove('hidden');
-    if (bname)   bname.innerText = tenant.brand_name;
-    if (signout) signout.classList.remove('hidden');
+    // Menu session strip
+    const menuStrip = document.getElementById('menu-session-strip');
+    const menuName  = document.getElementById('menu-tenant-name');
+    if (menuStrip) menuStrip.classList.remove('hidden');
+    if (menuName)  menuName.innerText = tenant.brand_name;
 
     // Admin panel strip
     const strip    = document.getElementById('admin-tenant-strip');
@@ -160,10 +158,10 @@ function _clearTenantSession() {
     localStorage.removeItem(SESSION_KEY_TENANT);
     _tenant = null; window._tenant = null;
     document.documentElement.style.cssText = '';
-    ['tenant-header-badge','tenant-signout-btn','admin-tenant-strip'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-    });
+    const menuStrip = document.getElementById('menu-session-strip');
+    if (menuStrip) menuStrip.classList.add('hidden');
+    const adminStrip = document.getElementById('admin-tenant-strip');
+    if (adminStrip) adminStrip.classList.add('hidden');
 }
 
 // ── Tenant Login Modal ────────────────────────────────────────────

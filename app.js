@@ -242,8 +242,23 @@ function updateLocationStatusFooter() {
 }
 window.updateLocationStatusFooter = updateLocationStatusFooter;
 
-function toggleMenuDemo() { alert('Navigation menu — system fully operational.'); }
-window.toggleMenuDemo = toggleMenuDemo;
+let _menuOpen = false;
+
+function toggleMenu() {
+    _menuOpen = !_menuOpen;
+    const overlay = document.getElementById('menu-overlay');
+    const drawer  = document.getElementById('menu-drawer');
+    overlay.classList.toggle('hidden', !_menuOpen);
+    drawer.classList.toggle('open', _menuOpen);
+}
+
+function menuOpenAdmin() {
+    toggleMenu();
+    if (window.toggleAdminMode) window.toggleAdminMode();
+}
+
+window.toggleMenu    = toggleMenu;
+window.menuOpenAdmin = menuOpenAdmin;
 
 
 // ════════════════════════════════════════════════════════════════
